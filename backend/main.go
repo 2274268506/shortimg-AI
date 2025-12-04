@@ -7,6 +7,7 @@ import (
 	"imagebed/config"
 	"imagebed/controllers"
 	"imagebed/database"
+	_ "imagebed/docs" // Swagger 文档
 	"imagebed/logger"
 	"imagebed/routes"
 	"imagebed/storage"
@@ -20,6 +21,26 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
+
+// @title TC-GO 图床管理系统 API
+// @version 1.0
+// @description 一个功能完整的图床管理系统，支持多种存储后端、图片格式转换、用户权限管理等
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.tc-go.com/support
+// @contact.email support@tc-go.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+// @description Bearer {token}
 
 func main() {
 	// 加载配置

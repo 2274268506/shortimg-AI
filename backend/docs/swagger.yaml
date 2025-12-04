@@ -1,0 +1,22 @@
+basePath: /api
+host: localhost:8080
+info:
+  contact:
+    email: support@tc-go.com
+    name: API Support
+    url: http://www.tc-go.com/support
+  description: 一个功能完整的图床管理系统，支持多种存储后端、图片格式转换、用户权限管理等
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: TC-GO 图床管理系统 API
+  version: "1.0"
+paths: {}
+securityDefinitions:
+  ApiKeyAuth:
+    description: Bearer {token}
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

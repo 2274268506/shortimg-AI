@@ -8,6 +8,9 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func SetupRoutes() *gin.Engine {
@@ -17,6 +20,7 @@ func SetupRoutes() *gin.Engine {
 	// 使用自定义中间件
 	r.Use(middleware.RecoveryMiddleware())
 	r.Use(middleware.LoggerMiddleware())
+	r.Use(middleware.PrometheusMiddleware())
 
 	// 配置CORS
 	r.Use(cors.New(cors.Config{
@@ -33,6 +37,12 @@ func SetupRoutes() *gin.Engine {
 	r.GET("/health/detailed", controllers.DetailedHealthCheck)
 	r.GET("/health/ready", controllers.ReadinessCheck)
 	r.GET("/health/live", controllers.LivenessCheck)
+
+	// Swagger API 文档
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Prometheus 监控指标
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// 优雅的图片访问路径 - 使用 UUID
 	r.GET("/i/:uuid", controllers.ServeImage)

@@ -215,14 +215,22 @@ func (c *Config) Validate() error {
 	if c.JWTSecret == "your-secret-key-change-this-in-production" ||
 		c.JWTSecret == "dev-secret-key-for-testing-only" {
 		if c.ServerMode == "release" {
-			return fmt.Errorf("生产环境必须修改 JWT_SECRET 为强随机字符串")
+			log.Fatal("❌ 生产环境必须修改 JWT_SECRET 为强随机字符串")
 		}
 		log.Println("⚠️  警告: 使用默认JWT密钥，生产环境请务必修改!")
 	}
 
-	// 检查JWT密钥长度
+	// 检查JWT密钥长度（强制要求）
 	if len(c.JWTSecret) < 32 {
+		if c.ServerMode == "release" {
+			log.Fatalf("❌ JWT 密钥长度必须至少32位，当前仅%d位", len(c.JWTSecret))
+		}
 		log.Printf("⚠️  警告: JWT密钥长度建议至少32位，当前仅%d位", len(c.JWTSecret))
+	}
+
+	// 检查密钥复杂度（生产环境）
+	if c.ServerMode == "release" && !isStrongSecret(c.JWTSecret) {
+		log.Println("⚠️  警告: JWT 密钥应包含大小写字母、数字和特殊字符")
 	}
 
 	// 检查Redis配置
@@ -323,6 +331,44 @@ func getEnvAsDuration(key, defaultValue string) time.Duration {
 		return value
 	}
 	return 10 * time.Minute // 最终默认值
+}
+
+// isStrongSecret 检查密钥是否足够强
+func isStrongSecret(secret string) bool {
+	hasUpper := false
+	hasLower := false
+	hasDigit := false
+	hasSpecial := false
+
+	for _, char := range secret {
+		switch {
+		case char >= 'A' && char <= 'Z':
+			hasUpper = true
+		case char >= 'a' && char <= 'z':
+			hasLower = true
+		case char >= '0' && char <= '9':
+			hasDigit = true
+		case char >= '!' && char <= '/' || char >= ':' && char <= '@' || char >= '[' && char <= '`' || char >= '{' && char <= '~':
+			hasSpecial = true
+		}
+	}
+
+	// 至少包含3种类型的字符
+	count := 0
+	if hasUpper {
+		count++
+	}
+	if hasLower {
+		count++
+	}
+	if hasDigit {
+		count++
+	}
+	if hasSpecial {
+		count++
+	}
+
+	return count >= 3
 }
 
 // GetJWTSecret 获取JWT密钥

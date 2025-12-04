@@ -48,6 +48,20 @@ test: ## 运行所有测试
 	cd backend && go test ./... -v
 	@echo "$(COLOR_INFO)运行前端测试...$(COLOR_RESET)"
 	cd frontend && npm test
+
+test-backend: ## 运行后端测试
+	@echo "$(COLOR_INFO)运行后端单元测试...$(COLOR_RESET)"
+	cd backend && go test ./... -v -cover
+
+test-coverage: ## 生成测试覆盖率报告
+	@echo "$(COLOR_INFO)生成测试覆盖率报告...$(COLOR_RESET)"
+	cd backend && go test ./... -coverprofile=coverage.out
+	cd backend && go tool cover -html=coverage.out -o coverage.html
+	@echo "$(COLOR_SUCCESS)✓ 覆盖率报告已生成: backend/coverage.html$(COLOR_RESET)"
+
+test-watch: ## 监听文件变化自动运行测试
+	@echo "$(COLOR_INFO)监听测试文件变化...$(COLOR_RESET)"
+	cd backend && go test ./... -v -watch
 	@echo "$(COLOR_SUCCESS)✓ 测试完成$(COLOR_RESET)"
 
 test-backend: ## 运行后端测试
@@ -98,6 +112,27 @@ swagger: ## 生成 API 文档
 	cd backend && swag init
 	@echo "$(COLOR_SUCCESS)✓ API 文档生成完成$(COLOR_RESET)"
 	@echo "$(COLOR_INFO)访问: http://localhost:8080/swagger/index.html$(COLOR_RESET)"
+
+##@ 监控
+
+metrics: ## 查看 Prometheus 指标
+	@echo "$(COLOR_INFO)Prometheus 指标端点:$(COLOR_RESET)"
+	@echo "  http://localhost:8080/metrics"
+	@curl -s http://localhost:8080/metrics | head -n 20
+
+monitoring-up: ## 启动监控服务（Prometheus + Grafana）
+	@echo "$(COLOR_INFO)启动监控服务...$(COLOR_RESET)"
+	docker-compose -f docker-compose.monitoring.yml up -d
+	@echo "$(COLOR_SUCCESS)✓ 监控服务已启动$(COLOR_RESET)"
+	@echo "$(COLOR_INFO)Prometheus: http://localhost:9090$(COLOR_RESET)"
+	@echo "$(COLOR_INFO)Grafana: http://localhost:3001 (admin/admin)$(COLOR_RESET)"
+
+monitoring-down: ## 停止监控服务
+	@echo "$(COLOR_INFO)停止监控服务...$(COLOR_RESET)"
+	docker-compose -f docker-compose.monitoring.yml down
+
+monitoring-logs: ## 查看监控日志
+	docker-compose -f docker-compose.monitoring.yml logs -f
 
 ##@ Docker
 
