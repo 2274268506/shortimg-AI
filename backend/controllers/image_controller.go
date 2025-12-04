@@ -11,6 +11,7 @@ import (
 	"imagebed/middleware"
 	"imagebed/models"
 	"imagebed/utils"
+	"imagebed/utils/imageprocessor"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -111,6 +112,16 @@ func UploadImage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存文件失败"})
 		return
 	}
+
+	// 异步处理图片：压缩 + 生成缩略图 + WebP转换
+	go func(path string) {
+		processor := imageprocessor.NewImageProcessor(85)
+		if err := processor.ProcessImage(path); err != nil {
+			fmt.Printf("图片处理失败: %v\n", err)
+		} else {
+			fmt.Printf("图片处理成功: %s\n", path)
+		}
+	}(filePath)
 
 	// 获取图片尺寸
 	width, height := getImageDimensions(filePath)
