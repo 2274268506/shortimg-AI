@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s      # 每 15 秒采集一次指标
+  evaluation_interval: 15s  # 每 15 秒评估一次告警规则
+  external_labels:
+    cluster: 'tc-go'
+    environment: 'development'
+
+# 告警规则文件
+rule_files:
+  - 'alerts.yml'
+
+# AlertManager 配置
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# 抓取配置
+scrape_configs:
+  # TC-GO 后端服务
+  - job_name: 'tc-go-backend'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # Prometheus 自监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter（如果需要服务器指标）
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']

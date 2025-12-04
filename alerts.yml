@@ -1,0 +1,189 @@
+groups:
+  - name: tc-go-alerts
+    interval: 30s
+    rules:
+      # ==================== 系统健康告警 ====================
+      
+      # 服务宕机告警
+      - alert: ServiceDown
+        expr: up{job="tc-go-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TC-GO 服务宕机"
+          description: "TC-GO 后端服务已宕机超过 1 分钟"
+
+      # ==================== HTTP 性能告警 ====================
+      
+      # 高错误率告警 (5xx 错误超过 5%)
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) 
+          / 
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP 高错误率"
+          description: "5 分钟内 HTTP 5xx 错误率为 {{ $value | humanizePercentage }}"
+
+      # 高延迟告警 (P95 > 1s)
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP 请求高延迟"
+          description: "{{ $labels.path }} 的 P95 延迟为 {{ $value }}s"
+
+      # 慢请求告警 (P99 > 2s)
+      - alert: VeryHighLatency
+        expr: |
+          histogram_quantile(0.99, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)
+          ) > 2
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP 请求极高延迟"
+          description: "{{ $labels.path }} 的 P99 延迟为 {{ $value }}s"
+
+      # 请求量激增告警 (突然增加 50%)
+      - alert: RequestSpike
+        expr: |
+          rate(http_requests_total[5m]) > 
+          1.5 * avg_over_time(rate(http_requests_total[5m])[1h:5m])
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "请求量激增"
+          description: "当前请求速率: {{ $value | humanize }}/s"
+
+      # ==================== 业务告警 ====================
+      
+      # 图片上传失败率过高 (> 10%)
+      - alert: HighUploadFailureRate
+        expr: |
+          sum(rate(image_uploads_total{status="failed"}[5m])) 
+          / 
+          sum(rate(image_uploads_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "图片上传失败率过高"
+          description: "上传失败率为 {{ $value | humanizePercentage }}"
+
+      # 图片上传失败率极高 (> 30%)
+      - alert: VeryHighUploadFailureRate
+        expr: |
+          sum(rate(image_uploads_total{status="failed"}[5m])) 
+          / 
+          sum(rate(image_uploads_total[5m])) > 0.3
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "图片上传失败率极高"
+          description: "上传失败率为 {{ $value | humanizePercentage }}，请立即检查存储系统"
+
+      # ==================== 缓存告警 ====================
+      
+      # 缓存命中率过低 (< 70%)
+      - alert: LowCacheHitRate
+        expr: |
+          sum(rate(cache_hits_total{hit="hit"}[5m])) 
+          / 
+          sum(rate(cache_hits_total[5m])) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "缓存命中率过低"
+          description: "{{ $labels.cache_type }} 缓存命中率为 {{ $value | humanizePercentage }}"
+
+      # 缓存命中率极低 (< 40%)
+      - alert: VeryLowCacheHitRate
+        expr: |
+          sum(rate(cache_hits_total{hit="hit"}[5m])) by (cache_type)
+          / 
+          sum(rate(cache_hits_total[5m])) by (cache_type) < 0.4
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "缓存命中率极低"
+          description: "{{ $labels.cache_type }} 缓存命中率为 {{ $value | humanizePercentage }}，可能需要增加缓存容量"
+
+      # ==================== 资源告警 ====================
+      
+      # 活跃请求数过高 (> 100)
+      - alert: TooManyActiveRequests
+        expr: http_requests_active > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "活跃请求数过高"
+          description: "当前活跃请求数: {{ $value }}，可能存在性能瓶颈"
+
+      # 活跃请求数极高 (> 200)
+      - alert: CriticalActiveRequests
+        expr: http_requests_active > 200
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "活跃请求数极高"
+          description: "当前活跃请求数: {{ $value }}，服务可能即将崩溃"
+
+      # ==================== 客户端错误告警 ====================
+      
+      # 4xx 错误率过高 (> 20%)
+      - alert: HighClientErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"4.."}[5m])) 
+          / 
+          sum(rate(http_requests_total[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "客户端错误率过高"
+          description: "4xx 错误率为 {{ $value | humanizePercentage }}"
+
+      # ==================== 特定路径告警 ====================
+      
+      # 上传接口错误率高
+      - alert: UploadEndpointErrors
+        expr: |
+          sum(rate(http_requests_total{path="/api/images/upload",status=~"5.."}[5m])) 
+          / 
+          sum(rate(http_requests_total{path="/api/images/upload"}[5m])) > 0.1
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "上传接口错误率高"
+          description: "上传接口 5xx 错误率为 {{ $value | humanizePercentage }}"
+
+      # 登录接口错误率高
+      - alert: LoginEndpointErrors
+        expr: |
+          sum(rate(http_requests_total{path="/api/auth/login",status=~"5.."}[5m])) 
+          / 
+          sum(rate(http_requests_total{path="/api/auth/login"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "登录接口错误率高"
+          description: "登录接口 5xx 错误率为 {{ $value | humanizePercentage }}"
