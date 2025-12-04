@@ -68,9 +68,21 @@ func SetupRoutes() *gin.Engine {
 		users := api.Group("/users")
 		users.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 		{
-			users.GET("", controllers.GetUsers)
-			users.DELETE("/:id", controllers.DeleteUser)
-			users.PUT("/:id/role", controllers.UpdateUserRole)
+			users.GET("", controllers.GetUsers)                              // 获取用户列表（支持分页、搜索）
+			users.GET("/:id", controllers.GetUser)                           // 获取用户详情
+			users.GET("/:id/stats", controllers.GetUserStats)                // 获取用户统计
+			users.DELETE("/:id", controllers.DeleteUser)                     // 删除用户
+			users.PUT("/:id/role", controllers.UpdateUserRole)               // 更新用户角色
+			users.PUT("/:id/status", controllers.UpdateUserStatus)           // 更新用户状态
+			users.POST("/:id/reset-password", controllers.ResetUserPassword) // 重置用户密码
+		}
+
+		// 用户个人资料路由（需要登录）
+		profile := api.Group("/profile")
+		profile.Use(middleware.AuthMiddleware())
+		{
+			profile.PUT("", controllers.UpdateProfile)                   // 更新个人资料
+			profile.POST("/change-password", controllers.ChangePassword) // 修改密码
 		}
 
 		// 相册相关路由
