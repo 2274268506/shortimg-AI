@@ -21,6 +21,7 @@ func SetupRoutes() *gin.Engine {
 	r.Use(middleware.RecoveryMiddleware())
 	r.Use(middleware.LoggerMiddleware())
 	r.Use(middleware.PrometheusMiddleware())
+	r.Use(middleware.ErrorHandlerMiddleware())
 
 	// 配置CORS
 	r.Use(cors.New(cors.Config{

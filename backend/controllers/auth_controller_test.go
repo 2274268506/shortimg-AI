@@ -38,7 +38,10 @@ func createTestUser(username, password string) *models.User {
 		Email:    username + "@test.com",
 		Role:     "user",
 	}
-	user.SetPassword(password)
+	// 使用 HashPassword 方法加密密码
+	if err := user.HashPassword(password); err != nil {
+		return nil
+	}
 
 	db := database.GetDB()
 	db.Create(user)
@@ -48,7 +51,7 @@ func createTestUser(username, password string) *models.User {
 
 // getAuthToken 获取认证 Token
 func getAuthToken(username, password string) string {
-	user := createTestUser(username, password)
+	createTestUser(username, password)
 
 	// 生成 JWT Token (这里需要实现 JWT 生成逻辑)
 	// token, _ := utils.GenerateToken(user.ID, user.Username, user.Role)
