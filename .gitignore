@@ -1,0 +1,50 @@
+# 忽略编译产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# 忽略依赖目录
+vendor/
+
+# 忽略数据文件
+/backend/data/
+/backend/uploads/
+
+# 忽略IDE配置
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 忽略日志
+*.log
+
+# 忽略临时文件
+*.tmp
+*.temp
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 前端构建产物
+/frontend/dist/
+/frontend/dist-ssr/
+/frontend/*.local
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 系统文件
+.DS_Store
+Thumbs.db

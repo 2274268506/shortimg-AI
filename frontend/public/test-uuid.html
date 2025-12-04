@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UUID 图片测试</title>
+</head>
+<body>
+    <h1>UUID 图片访问测试</h1>
+    
+    <h2>1. 直接访问后端 (8080端口)</h2>
+    <img src="http://localhost:8080/i/8652e25a-c466-41d3-89ff-7bc812bc770a" style="max-width: 300px;" onerror="this.alt='加载失败'" alt="测试图片1">
+    <p>URL: <code>http://localhost:8080/i/8652e25a-c466-41d3-89ff-7bc812bc770a</code></p>
+    
+    <h2>2. 通过前端代理访问 (5173端口)</h2>
+    <img src="http://localhost:5173/i/8652e25a-c466-41d3-89ff-7bc812bc770a" style="max-width: 300px;" onerror="this.alt='加载失败'" alt="测试图片2">
+    <p>URL: <code>http://localhost:5173/i/8652e25a-c466-41d3-89ff-7bc812bc770a</code></p>
+    
+    <h2>3. 相对路径访问 (应用内)</h2>
+    <img src="/i/8652e25a-c466-41d3-89ff-7bc812bc770a" style="max-width: 300px;" onerror="this.alt='加载失败'" alt="测试图片3">
+    <p>URL: <code>/i/8652e25a-c466-41d3-89ff-7bc812bc770a</code></p>
+    
+    <script>
+        console.log('图片测试页面加载完成');
+        console.log('如果图片1显示正常，说明后端工作正常');
+        console.log('如果图片2显示正常，说明前端代理工作正常');  
+        console.log('如果图片3显示正常，说明相对路径工作正常（应用内使用）');
+    </script>
+</body>
+</html>

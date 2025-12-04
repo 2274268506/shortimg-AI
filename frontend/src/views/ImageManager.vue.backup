@@ -1,0 +1,1291 @@
+<template>
+  <div class="image-manager">
+    <!-- 顶部工具栏 -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <h1>
+          <el-icon><Picture /></el-icon>
+          图床管理系统
+        </h1>
+      </div>
+      <div class="toolbar-right">
+        <el-button type="primary" :icon="Upload" @click="showUploadDialog = true">
+          上传图片
+        </el-button>
+        <el-button :icon="FolderAdd" @click="showCreateAlbumDialog = true">
+          新建相册
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 主要内容区域 -->
+    <div class="content">
+      <!-- 左侧相册列表 -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h3>相册列表</h3>
+        </div>
+        <div class="album-list">
+          <div
+            v-for="album in albums"
+            :key="album.id"
+            class="album-item"
+            :class="{ active: currentAlbum?.id === album.id }"
+            @click="selectAlbum(album)"
+          >
+            <div class="album-icon">
+              <el-icon><Folder /></el-icon>
+            </div>
+            <div class="album-info">
+              <div class="album-name">{{ album.name }}</div>
+              <div class="album-count">{{ album.imageCount || 0 }} 张图片</div>
+            </div>
+            <div class="album-actions" v-if="album.id !== 1">
+              <el-button
+                :icon="Edit"
+                size="small"
+                link
+                @click.stop="handleEditAlbum(album)"
+                title="编辑相册"
+              />
+              <el-popconfirm
+                title="确定删除此相册吗？"
+                @confirm="handleDeleteAlbum(album.id)"
+              >
+                <template #reference>
+                  <el-button
+                    :icon="Delete"
+                    type="danger"
+                    size="small"
+                    link
+                    @click.stop
+                  />
+                </template>
+              </el-popconfirm>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧图片列表 -->
+      <div 
+        class="main-content"
+        @drop.prevent="handleDrop"
+        @dragover.prevent="handleDragOver"
+        @dragleave.prevent="handleDragLeave"
+        :class="{ 'drag-over': isDragging }"
+      >
+        <!-- 拖拽上传提示层 -->
+        <div v-if="isDragging" class="drag-overlay">
+          <div class="drag-hint">
+            <el-icon class="drag-icon"><Upload /></el-icon>
+            <div class="drag-text">释放以上传图片到当前相册</div>
+          </div>
+        </div>
+
+        <div class="content-header">
+          <h2>{{ currentAlbum?.name || '未选择相册' }}</h2>
+          <div class="header-actions">
+            <el-select 
+              v-model="sortByValue" 
+              placeholder="排序方式" 
+              style="width: 140px; margin-right: 12px;"
+              @change="handleSortChange"
+            >
+              <el-option label="上传时间 ↓" value="time-desc" />
+              <el-option label="上传时间 ↑" value="time-asc" />
+              <el-option label="文件名 A-Z" value="name-asc" />
+              <el-option label="文件名 Z-A" value="name-desc" />
+              <el-option label="文件大小 ↓" value="size-desc" />
+              <el-option label="文件大小 ↑" value="size-asc" />
+            </el-select>
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索图片..."
+              :prefix-icon="Search"
+              clearable
+              @input="handleSearch"
+              style="width: 250px; margin-right: 12px;"
+            />
+            <el-radio-group v-model="viewMode" size="small">
+              <el-radio-button value="grid">
+                <el-icon><Grid /></el-icon>
+                网格
+              </el-radio-button>
+              <el-radio-button value="list">
+                <el-icon><List /></el-icon>
+                列表
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+        </div>
+
+        <!-- 统计信息面板 -->
+        <div v-if="currentAlbum && !loading" class="stats-panel">
+          <div class="stat-item">
+            <el-icon class="stat-icon"><Picture /></el-icon>
+            <div class="stat-content">
+              <div class="stat-label">图片总数</div>
+              <div class="stat-value">{{ images.length }}</div>
+            </div>
+          </div>
+          <div class="stat-item">
+            <el-icon class="stat-icon"><Document /></el-icon>
+            <div class="stat-content">
+              <div class="stat-label">总大小</div>
+              <div class="stat-value">{{ totalSize }}</div>
+            </div>
+          </div>
+          <div class="stat-item">
+            <el-icon class="stat-icon"><Collection /></el-icon>
+            <div class="stat-content">
+              <div class="stat-label">当前相册</div>
+              <div class="stat-value">{{ currentAlbum.name }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="loading" class="loading-container">
+          <el-icon class="is-loading" :size="40"><Loading /></el-icon>
+        </div>
+
+        <!-- 网格视图 -->
+        <div v-if="viewMode === 'grid'" class="image-grid">
+          <div
+            v-for="image in images"
+            :key="image.id"
+            class="image-card"
+            @click="previewImage(image)"
+          >
+            <div class="image-wrapper">
+              <img :src="image.url" :alt="image.fileName" loading="lazy" />
+              <div class="image-overlay">
+                <el-button
+                  :icon="View"
+                  circle
+                  @click.stop="previewImage(image)"
+                />
+                <el-dropdown @command="(cmd) => copyImageLink(image, cmd)" trigger="click" @click.stop>
+                  <el-button :icon="Link" circle title="复制链接" />
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="url">直接链接</el-dropdown-item>
+                      <el-dropdown-item command="markdown">Markdown</el-dropdown-item>
+                      <el-dropdown-item command="html">HTML</el-dropdown-item>
+                      <el-dropdown-item command="bbcode">BBCode</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+                <el-button
+                  :icon="Download"
+                  circle
+                  @click.stop="downloadImage(image)"
+                />
+                <el-popconfirm
+                  title="确定删除此图片吗？"
+                  @confirm="handleDeleteImage(image.id)"
+                >
+                  <template #reference>
+                    <el-button
+                      :icon="Delete"
+                      circle
+                      type="danger"
+                      @click.stop
+                    />
+                  </template>
+                </el-popconfirm>
+              </div>
+            </div>
+            <div class="image-info">
+              <div class="image-name" :title="image.fileName">
+                {{ image.fileName }}
+              </div>
+              <div class="image-size">
+                {{ formatFileSize(image.fileSize) }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 列表视图 -->
+        <el-table v-else-if="viewMode === 'list'" :data="images" stripe>
+          <el-table-column label="预览" width="80">
+            <template #default="{ row }">
+              <img
+                :src="row.url"
+                class="table-thumbnail"
+                loading="lazy"
+                @click="previewImage(row)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column prop="fileName" label="文件名" min-width="200" />
+          <el-table-column label="尺寸" width="120">
+            <template #default="{ row }">
+              {{ row.width }} × {{ row.height }}
+            </template>
+          </el-table-column>
+          <el-table-column label="大小" width="100">
+            <template #default="{ row }">
+              {{ formatFileSize(row.fileSize) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="上传时间" width="180">
+            <template #default="{ row }">
+              {{ formatDate(row.createdAt) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="280" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                :icon="View"
+                size="small"
+                @click="previewImage(row)"
+              >
+                预览
+              </el-button>
+              <el-dropdown @command="(cmd) => copyImageLink(row, cmd)" trigger="click">
+                <el-button :icon="Link" size="small">
+                  复制 <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="url">直接链接</el-dropdown-item>
+                    <el-dropdown-item command="markdown">Markdown</el-dropdown-item>
+                    <el-dropdown-item command="html">HTML</el-dropdown-item>
+                    <el-dropdown-item command="bbcode">BBCode</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <el-button
+                :icon="Download"
+                size="small"
+                @click="downloadImage(row)"
+              >
+                下载
+              </el-button>
+              <el-popconfirm
+                title="确定删除吗？"
+                @confirm="handleDeleteImage(row.id)"
+              >
+                <template #reference>
+                  <el-button
+                    :icon="Delete"
+                    size="small"
+                    type="danger"
+                  >
+                    删除
+                  </el-button>
+                </template>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <!-- 分页 / 加载更多 -->
+        <div class="load-more" v-if="images.length > 0 && !loading">
+          <el-button
+            type="primary"
+            plain
+            @click="handleLoadMore"
+            :disabled="images.length >= store.total"
+          >
+            {{ images.length >= store.total ? '已全部加载' : '加载更多' }}
+          </el-button>
+        </div>
+
+        <!-- 空状态 -->
+        <el-empty
+          v-if="!loading && images.length === 0"
+          description="暂无图片，点击上传按钮添加图片"
+        />
+      </div>
+    </div>
+
+    <!-- 上传对话框 -->
+    <el-dialog
+      v-model="showUploadDialog"
+      title="上传图片"
+      width="600px"
+    >
+      <el-form label-width="80px">
+        <el-form-item label="选择相册">
+          <el-select v-model="uploadAlbumId" placeholder="请选择相册">
+            <el-option
+              v-for="album in albums"
+              :key="album.id"
+              :label="album.name"
+              :value="album.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="选择图片">
+          <el-upload
+            ref="uploadRef"
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :file-list="fileList"
+            accept="image/*"
+            multiple
+            drag
+          >
+            <el-icon class="el-icon--upload"><Upload /></el-icon>
+            <div class="el-upload__text">
+              拖拽文件到此处或 <em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 jpg/png/gif/webp 格式，单个文件不超过 100MB
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      
+      <!-- 上传进度 -->
+      <div v-if="uploading" class="upload-progress">
+        <el-progress :percentage="uploadProgress" :status="uploadStatus" />
+        <p class="progress-text">{{ uploadMessage }}</p>
+      </div>
+      
+      <template #footer>
+        <el-button @click="showUploadDialog = false" :disabled="uploading">取消</el-button>
+        <el-button
+          type="primary"
+          @click="handleUpload"
+          :loading="uploading"
+        >
+          {{ uploading ? '上传中...' : '开始上传' }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 创建相册对话框 -->
+    <el-dialog
+      v-model="showCreateAlbumDialog"
+      title="新建相册"
+      width="500px"
+    >
+      <el-form :model="albumForm" label-width="80px">
+        <el-form-item label="相册名称" required>
+          <el-input v-model="albumForm.name" placeholder="请输入相册名称" />
+        </el-form-item>
+        <el-form-item label="相册描述">
+          <el-input
+            v-model="albumForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入相册描述"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateAlbumDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateAlbum">
+          创建
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑相册对话框 -->
+    <el-dialog
+      v-model="showEditAlbumDialog"
+      title="编辑相册"
+      width="500px"
+    >
+      <el-form :model="editAlbumForm" label-width="80px">
+        <el-form-item label="相册名称" required>
+          <el-input v-model="editAlbumForm.name" placeholder="请输入相册名称" />
+        </el-form-item>
+        <el-form-item label="相册描述">
+          <el-input
+            v-model="editAlbumForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入相册描述"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditAlbumDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleUpdateAlbum">
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 图片预览对话框 -->
+    <el-dialog
+      v-model="showPreviewDialog"
+      :title="previewImageData?.fileName"
+      width="80%"
+      class="preview-dialog"
+    >
+      <div class="preview-content">
+        <div class="preview-image-container">
+          <img :src="previewImageData?.url" class="preview-image" />
+        </div>
+        <div class="preview-details">
+          <h3>图片详情</h3>
+          <div class="detail-item">
+            <span class="detail-label">文件名:</span>
+            <span class="detail-value">{{ previewImageData?.fileName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">尺寸:</span>
+            <span class="detail-value">{{ previewImageData?.width }} × {{ previewImageData?.height }} px</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">文件大小:</span>
+            <span class="detail-value">{{ formatFileSize(previewImageData?.fileSize) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">格式:</span>
+            <span class="detail-value">{{ previewImageData?.mimeType || '未知' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">上传时间:</span>
+            <span class="detail-value">{{ formatDate(previewImageData?.createdAt) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">图片链接:</span>
+            <div class="detail-value link-value">
+              <el-input 
+                :model-value="previewImageData?.url ? (window.location.origin + previewImageData.url) : ''"
+                readonly
+                size="small"
+              />
+              <el-dropdown @command="(cmd) => copyImageLink(previewImageData, cmd)" trigger="click">
+                <el-button :icon="Link" size="small" style="margin-left: 8px;">
+                  复制 <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="url">直接链接</el-dropdown-item>
+                    <el-dropdown-item command="markdown">Markdown</el-dropdown-item>
+                    <el-dropdown-item command="html">HTML</el-dropdown-item>
+                    <el-dropdown-item command="bbcode">BBCode</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="downloadImage(previewImageData)" :icon="Download">
+          下载图片
+        </el-button>
+        <el-button @click="showPreviewDialog = false">
+          关闭
+        </el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed, watch } from 'vue'
+import { useImageStore } from '@/stores/image'
+import { ElMessage } from 'element-plus'
+import {
+  Picture,
+  Upload,
+  FolderAdd,
+  Folder,
+  Delete,
+  Grid,
+  List,
+  View,
+  Download,
+  Loading,
+  Link,
+  Search,
+  Document,
+  Collection,
+  Edit,
+  ArrowDown
+} from '@element-plus/icons-vue'
+
+const store = useImageStore()
+
+const albums = computed(() => store.albums)
+const currentAlbum = computed(() => store.currentAlbum)
+const images = computed(() => store.images)
+const loading = computed(() => store.loading)
+
+// 计算总大小
+const totalSize = computed(() => {
+  if (!images.value || images.value.length === 0) return '0 B'
+  const total = images.value.reduce((sum, img) => sum + (img.fileSize || 0), 0)
+  return formatFileSize(total)
+})
+
+const viewMode = ref('grid')
+const searchKeyword = ref('')
+const sortByValue = ref('time-desc') // UI 使用的排序值
+const isDragging = ref(false) // 拖拽状态
+const showUploadDialog = ref(false)
+const showCreateAlbumDialog = ref(false)
+const showEditAlbumDialog = ref(false)
+const showPreviewDialog = ref(false)
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const uploadStatus = ref('')
+const uploadMessage = ref('')
+const uploadAlbumId = ref(1)
+const fileList = ref([])
+const albumForm = ref({
+  name: '',
+  description: ''
+})
+const editAlbumForm = ref({
+  id: null,
+  name: '',
+  description: ''
+})
+const previewImageData = ref(null)
+
+onMounted(async () => {
+  console.log('ImageManager mounted')
+  await store.loadAlbums()
+  console.log('相册加载完成，当前相册:', store.currentAlbum)
+  if (store.currentAlbum) {
+    console.log('开始加载相册图片，ID:', store.currentAlbum.id)
+    await store.loadImages(store.currentAlbum.id)
+    console.log('图片加载完成，数量:', store.images.length)
+  } else {
+    console.log('没有当前相册')
+  }
+})
+
+const selectAlbum = async (album) => {
+  store.currentAlbum = album
+  searchKeyword.value = '' // 切换相册时清空搜索
+  await store.loadImages(album.id)
+}
+
+// 搜索处理
+const handleSearch = async () => {
+  if (currentAlbum.value) {
+    await store.loadImages(currentAlbum.value.id, searchKeyword.value)
+  }
+}
+
+// 复制图片链接 - 多种格式
+const copyImageLink = async (image, format = 'url') => {
+  const fullUrl = window.location.origin + image.url
+  let textToCopy = ''
+  
+  switch (format) {
+    case 'url':
+      textToCopy = fullUrl
+      break
+    case 'markdown':
+      textToCopy = `![${image.fileName}](${fullUrl})`
+      break
+    case 'html':
+      textToCopy = `<img src="${fullUrl}" alt="${image.fileName}" />`
+      break
+    case 'bbcode':
+      textToCopy = `[img]${fullUrl}[/img]`
+      break
+    default:
+      textToCopy = fullUrl
+  }
+  
+  try {
+    // 尝试使用现代 Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(textToCopy)
+      ElMessage.success('链接已复制到剪贴板')
+    } else {
+      // 降级方案：使用传统方法
+      const textArea = document.createElement('textarea')
+      textArea.value = textToCopy
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
+      document.body.appendChild(textArea)
+      textArea.select()
+      
+      try {
+        document.execCommand('copy')
+        ElMessage.success('链接已复制到剪贴板')
+      } catch (err) {
+        ElMessage.error('复制失败，请手动复制')
+        console.error('复制失败:', err)
+      }
+      
+      document.body.removeChild(textArea)
+    }
+  } catch (err) {
+    ElMessage.error('复制失败')
+    console.error('复制失败:', err)
+  }
+}
+
+const handleFileChange = (file, files) => {
+  fileList.value = files
+}
+
+const handleUpload = async () => {
+  if (fileList.value.length === 0) {
+    ElMessage.warning('请选择要上传的图片')
+    return
+  }
+
+  uploading.value = true
+  uploadProgress.value = 0
+  uploadStatus.value = ''
+  const totalFiles = fileList.value.length
+  
+  try {
+    uploadMessage.value = `准备上传 ${totalFiles} 个文件...`
+    uploadProgress.value = 10
+    
+    const files = fileList.value.map(f => f.raw)
+    
+    uploadMessage.value = `正在上传 ${totalFiles} 个文件...`
+    uploadProgress.value = 30
+    
+    await store.batchUploadImages(files, uploadAlbumId.value)
+    
+    uploadProgress.value = 100
+    uploadStatus.value = 'success'
+    uploadMessage.value = `成功上传 ${totalFiles} 个文件`
+    
+    setTimeout(() => {
+      ElMessage.success('上传成功')
+      showUploadDialog.value = false
+      fileList.value = []
+      uploadProgress.value = 0
+      uploadStatus.value = ''
+      uploadMessage.value = ''
+    }, 1000)
+    
+    // 如果上传到当前相册，刷新列表
+    if (uploadAlbumId.value === currentAlbum.value?.id) {
+      await store.loadImages(currentAlbum.value.id)
+    }
+    await store.loadAlbums()
+  } catch (error) {
+    uploadStatus.value = 'exception'
+    uploadMessage.value = '上传失败'
+    ElMessage.error('上传失败')
+  } finally {
+    setTimeout(() => {
+      uploading.value = false
+    }, 1500)
+  }
+}
+
+const handleCreateAlbum = async () => {
+  if (!albumForm.value.name) {
+    ElMessage.warning('请输入相册名称')
+    return
+  }
+
+  try {
+    await store.createAlbum(albumForm.value)
+    ElMessage.success('创建成功')
+    showCreateAlbumDialog.value = false
+    albumForm.value = { name: '', description: '' }
+  } catch (error) {
+    ElMessage.error('创建失败')
+  }
+}
+
+const handleEditAlbum = (album) => {
+  editAlbumForm.value = {
+    id: album.id,
+    name: album.name,
+    description: album.description || ''
+  }
+  showEditAlbumDialog.value = true
+}
+
+const handleUpdateAlbum = async () => {
+  if (!editAlbumForm.value.name) {
+    ElMessage.warning('请输入相册名称')
+    return
+  }
+
+  try {
+    await store.updateAlbum(editAlbumForm.value.id, {
+      name: editAlbumForm.value.name,
+      description: editAlbumForm.value.description
+    })
+    ElMessage.success('更新成功')
+    showEditAlbumDialog.value = false
+    await store.loadAlbums()
+  } catch (error) {
+    ElMessage.error('更新失败')
+  }
+}
+
+const handleDeleteAlbum = async (id) => {
+  try {
+    await store.removeAlbum(id)
+    ElMessage.success('删除成功')
+    if (currentAlbum.value?.id === id && albums.value.length > 0) {
+      await selectAlbum(albums.value[0])
+    }
+  } catch (error) {
+    ElMessage.error('删除失败')
+  }
+}
+
+// 拖拽上传相关函数
+const handleDragOver = (e) => {
+  if (!currentAlbum.value) return
+  isDragging.value = true
+}
+
+const handleDragLeave = (e) => {
+  // 只有当离开整个拖拽区域时才取消高亮
+  if (e.target.classList.contains('main-content')) {
+    isDragging.value = false
+  }
+}
+
+const handleDrop = async (e) => {
+  isDragging.value = false
+  
+  if (!currentAlbum.value) {
+    ElMessage.warning('请先选择相册')
+    return
+  }
+
+  const files = Array.from(e.dataTransfer.files).filter(file => 
+    file.type.startsWith('image/')
+  )
+
+  if (files.length === 0) {
+    ElMessage.warning('请拖拽图片文件')
+    return
+  }
+
+  // 使用当前相册进行上传
+  uploadAlbumId.value = currentAlbum.value.id
+  
+  // 开始上传
+  uploading.value = true
+  uploadProgress.value = 0
+  uploadStatus.value = 'uploading'
+  uploadMessage.value = `正在上传 ${files.length} 张图片...`
+
+  try {
+    let successCount = 0
+    for (let i = 0; i < files.length; i++) {
+      const formData = new FormData()
+      formData.append('file', files[i])
+      formData.append('albumId', uploadAlbumId.value)
+
+      try {
+        await store.uploadImage(formData)
+        successCount++
+        uploadProgress.value = Math.round(((i + 1) / files.length) * 100)
+      } catch (error) {
+        console.error(`上传失败: ${files[i].name}`, error)
+      }
+    }
+
+    uploadStatus.value = 'success'
+    uploadMessage.value = `成功上传 ${successCount}/${files.length} 张图片`
+    
+    if (successCount > 0) {
+      await store.loadImages(uploadAlbumId.value, searchKeyword.value)
+      await store.loadAlbums()
+      ElMessage.success(`成功上传 ${successCount} 张图片`)
+    }
+    
+    setTimeout(() => {
+      uploading.value = false
+      uploadProgress.value = 0
+    }, 2000)
+  } catch (error) {
+    uploadStatus.value = 'error'
+    uploadMessage.value = '上传失败'
+    ElMessage.error('上传失败')
+    setTimeout(() => {
+      uploading.value = false
+    }, 2000)
+  }
+}
+
+// 排序功能
+const handleSortChange = async () => {
+  // 解析排序值
+  const parts = sortByValue.value.split('-')
+  store.sortBy = parts[0] // time, name, size
+  store.order = parts[1]  // asc, desc
+  
+  // 重新加载图片
+  if (currentAlbum.value) {
+    await store.loadImages(currentAlbum.value.id, searchKeyword.value)
+  }
+}
+
+const handleDeleteImage = async (id) => {
+  try {
+    await store.removeImage(id, currentAlbum.value.id)
+    ElMessage.success('删除成功')
+    await store.loadAlbums()
+  } catch (error) {
+    ElMessage.error('删除失败')
+  }
+}
+
+const handleLoadMore = async () => {
+  if (!currentAlbum.value) return
+  await store.loadMoreImages(currentAlbum.value.id, searchKeyword.value)
+}
+
+const previewImage = (image) => {
+  previewImageData.value = image
+  showPreviewDialog.value = true
+}
+
+const downloadImage = (image) => {
+  const link = document.createElement('a')
+  link.href = image.url
+  link.download = image.fileName
+  link.click()
+}
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN')
+}
+</script>
+
+<style scoped>
+.image-manager {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f5f7fa;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background-color: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.toolbar-left h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-right {
+  display: flex;
+  gap: 12px;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 280px;
+  background-color: #fff;
+  border-right: 1px solid #e4e7ed;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.sidebar-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.album-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.album-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.album-item:hover {
+  background-color: #f5f7fa;
+}
+
+.album-item.active {
+  background-color: #ecf5ff;
+  color: #409eff;
+}
+
+.album-icon {
+  font-size: 24px;
+  margin-right: 12px;
+}
+
+.album-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.album-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.album-count {
+  font-size: 12px;
+  color: #909399;
+}
+
+.album-actions {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.album-item:hover .album-actions {
+  opacity: 1;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #fff;
+  position: relative;
+  transition: background-color 0.3s;
+}
+
+.main-content.drag-over {
+  background-color: #f0f9ff;
+  border: 2px dashed #409eff;
+}
+
+.drag-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(64, 158, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.drag-hint {
+  text-align: center;
+  padding: 40px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.drag-icon {
+  font-size: 64px;
+  color: #409eff;
+  margin-bottom: 16px;
+}
+
+.drag-text {
+  font-size: 18px;
+  color: #409eff;
+  font-weight: 500;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.content-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.stats-panel {
+  display: flex;
+  gap: 16px;
+  padding: 16px 24px;
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  flex: 1;
+}
+
+.stat-icon {
+  font-size: 32px;
+  color: #409eff;
+  margin-right: 12px;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.loading-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #409eff;
+}
+
+.image-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  align-content: start;
+}
+
+.image-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+  border: 1px solid #e4e7ed;
+  transition: all 0.3s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+
+.image-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 100%;
+  background-color: #f5f7fa;
+  overflow: hidden;
+}
+
+.image-wrapper img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.image-card:hover .image-overlay {
+  opacity: 1;
+}
+
+.image-info {
+  padding: 8px 10px; /* 减少水平 padding */
+  width: 100%;
+  min-width: 0; /* 允许子元素收缩 */
+  box-sizing: border-box;
+  flex-shrink: 0;
+  overflow: hidden; /* 添加溢出隐藏 */
+}
+
+.image-name {
+  font-size: 14px;
+  color: #303133;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%; /* 明确宽度 */
+}
+
+.image-size {
+  font-size: 12px;
+  color: #909399;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%; /* 明确宽度 */
+  word-break: break-all; /* 如果需要可以断词 */
+}
+
+.table-thumbnail {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.upload-progress {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #f5f7fa;
+  border-radius: 8px;
+}
+
+.progress-text {
+  margin-top: 12px;
+  text-align: center;
+  color: #606266;
+  font-size: 14px;
+}
+
+.preview-dialog {
+  .preview-content {
+    display: flex;
+    gap: 24px;
+  }
+
+  .preview-image-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    background-color: #f5f7fa;
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .preview-image {
+    max-width: 100%;
+    max-height: 60vh;
+    object-fit: contain;
+  }
+
+  .preview-details {
+    width: 350px;
+    background-color: #f5f7fa;
+    padding: 20px;
+    border-radius: 8px;
+  }
+
+  .preview-details h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    color: #303133;
+  }
+
+  .detail-item {
+    margin-bottom: 16px;
+  }
+
+  .detail-label {
+    display: block;
+    font-size: 12px;
+    color: #909399;
+    margin-bottom: 4px;
+  }
+
+  .detail-value {
+    display: block;
+    font-size: 14px;
+    color: #303133;
+    word-break: break-all;
+  }
+
+  .link-value {
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* 下拉菜单样式 */
+.el-dropdown-menu__item {
+  font-size: 13px;
+  padding: 8px 16px;
+}
+
+.el-dropdown-menu__item:hover {
+  background-color: #f5f7fa;
+  color: #409eff;
+}
+</style>
