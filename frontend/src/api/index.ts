@@ -143,7 +143,7 @@ export const updateImageFile = (id: number, file: Blob) => {
 
 // 获取签名URL
 export const getSignedURL = (id: number, ttl = 3600) => {
-  return request.get<ApiResponse<{url: string, expires: number, expiresAt: string}>>(`/images/${id}/signed-url`, {
+  return request.get<ApiResponse<{ url: string, expires: number, expiresAt: string }>>(`/images/${id}/signed-url`, {
     params: { ttl }
   })
 }
@@ -180,7 +180,7 @@ export const batchConvertFormat = (ids: number[], targetFormat: string, quality?
 
 // ========== 用户认证相关 API ==========
 
-import type { LoginRequest, RegisterRequest, AuthResponse, User } from '@/types'
+import type { LoginRequest, RegisterRequest, AuthResponse, User, UserStats, ProfileUpdateRequest, ChangePasswordRequest } from '@/types'
 
 // 用户登录
 export const login = (data: LoginRequest) => {
@@ -202,9 +202,42 @@ export const logout = () => {
   return request.post<ApiResponse<void>>('/auth/logout')
 }
 
-// 获取用户列表（管理员）
-export const getUsers = () => {
-  return request.get<ApiResponse<User[]>>('/users')
+// ========== 用户管理相关 API ==========
+
+// 获取用户列表（管理员）- 支持分页和搜索
+export const getUsers = (params?: {
+  page?: number
+  pageSize?: number
+  keyword?: string
+  status?: string
+  role?: string
+}) => {
+  return request.get<ApiResponse<{
+    users: User[]
+    total: number
+    page: number
+    pageSize: number
+  }>>('/users', { params })
+}
+
+// 获取用户详情（管理员）
+export const getUser = (id: number) => {
+  return request.get<ApiResponse<User>>(`/users/${id}`)
+}
+
+// 获取用户统计信息（管理员）
+export const getUserStats = (id: number) => {
+  return request.get<ApiResponse<UserStats>>(`/users/${id}/stats`)
+}
+
+// 更新用户状态（管理员）
+export const updateUserStatus = (id: number, status: string) => {
+  return request.put<ApiResponse<User>>(`/users/${id}/status`, { status })
+}
+
+// 重置用户密码（管理员）
+export const resetUserPassword = (id: number, newPassword: string) => {
+  return request.post<ApiResponse<void>>(`/users/${id}/reset-password`, { newPassword })
 }
 
 // 删除用户（管理员）
@@ -215,5 +248,17 @@ export const deleteUser = (id: number) => {
 // 更新用户角色（管理员）
 export const updateUserRole = (id: number, role: string) => {
   return request.put<ApiResponse<User>>(`/users/${id}/role`, { role })
+}
+
+// ========== 个人资料相关 API ==========
+
+// 更新个人资料
+export const updateProfile = (data: ProfileUpdateRequest) => {
+  return request.put<ApiResponse<User>>('/profile', data)
+}
+
+// 修改密码
+export const changePassword = (data: ChangePasswordRequest) => {
+  return request.post<ApiResponse<void>>('/profile/change-password', data)
 }
 

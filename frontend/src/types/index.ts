@@ -86,8 +86,23 @@ export interface User {
   username: string
   email: string
   role: string
+  status?: string
+  avatar?: string
+  bio?: string
+  lastLogin?: string
+  loginIP?: string
   createdAt: string
   updatedAt: string
+}
+
+// 用户统计类型
+export interface UserStats {
+  userId: number
+  totalImages: number
+  totalAlbums: number
+  totalStorage: number
+  totalViews: number
+  totalDownloads: number
 }
 
 export interface LoginRequest {
@@ -123,5 +138,17 @@ export interface PaginatedResponse<T> {
   total: number
   page: number
   pageSize: number
+}
+
+// 个人资料更新请求
+export interface ProfileUpdateRequest {
+  avatar?: string
+  bio?: string
+}
+
+// 修改密码请求
+export interface ChangePasswordRequest {
+  oldPassword: string
+  newPassword: string
 }
 

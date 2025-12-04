@@ -5,6 +5,7 @@ import Settings from '../views/Settings.vue'
 import Login from '../views/Login.vue'
 import Users from '../views/Users.vue'
 import Logs from '../views/Logs.vue'
+import Profile from '../views/Profile.vue'
 import { getToken, getUser } from '@/utils/config'
 
 const router = createRouter({
@@ -26,6 +27,12 @@ const router = createRouter({
       path: '/statistics',
       name: 'statistics',
       component: Statistics,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: Profile,
       meta: { requiresAuth: true }
     },
     {
@@ -53,13 +60,13 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const token = getToken()
   const user = getUser()
-  
+
   // 需要认证的页面
   if (to.meta.requiresAuth && !token) {
     next('/login')
     return
   }
-  
+
   // 需要管理员权限的页面
   if (to.meta.requiresAdmin) {
     if (!user || user.role !== 'admin') {
@@ -69,13 +76,13 @@ router.beforeEach((to, _from, next) => {
       return
     }
   }
-  
+
   // 已登录用户访问登录页，重定向到首页
   if (to.path === '/login' && token) {
     next('/')
     return
   }
-  
+
   next()
 })
 

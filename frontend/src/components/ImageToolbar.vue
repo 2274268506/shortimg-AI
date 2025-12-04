@@ -2,28 +2,40 @@
   <div class="toolbar">
     <div class="toolbar-left">
       <h1>
-        <el-icon><Picture /></el-icon>
+        <el-icon>
+          <Picture />
+        </el-icon>
         图床管理系统
       </h1>
       <div class="toolbar-nav">
         <router-link to="/" class="nav-link" active-class="active">
-          <el-icon><Files /></el-icon>
+          <el-icon>
+            <Files />
+          </el-icon>
           资源管理
         </router-link>
         <router-link to="/statistics" class="nav-link" active-class="active">
-          <el-icon><DataAnalysis /></el-icon>
+          <el-icon>
+            <DataAnalysis />
+          </el-icon>
           使用统计
         </router-link>
         <router-link to="/settings" class="nav-link" active-class="active">
-          <el-icon><Setting /></el-icon>
+          <el-icon>
+            <Setting />
+          </el-icon>
           系统设置
         </router-link>
         <router-link v-if="isAdmin" to="/users" class="nav-link" active-class="active">
-          <el-icon><UserFilled /></el-icon>
+          <el-icon>
+            <UserFilled />
+          </el-icon>
           用户管理
         </router-link>
         <router-link v-if="isAdmin" to="/logs" class="nav-link" active-class="active">
-          <el-icon><Document /></el-icon>
+          <el-icon>
+            <Document />
+          </el-icon>
           日志管理
         </router-link>
       </div>
@@ -35,7 +47,7 @@
       <el-button :icon="FolderAdd" @click="$emit('createAlbum')">
         新建相册
       </el-button>
-      
+
       <el-dropdown v-if="currentUser" @command="handleCommand" trigger="click">
         <el-button :icon="User">
           {{ currentUser.username }}
@@ -43,11 +55,15 @@
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item command="profile">
-              <el-icon><User /></el-icon>
+              <el-icon>
+                <User />
+              </el-icon>
               个人信息
             </el-dropdown-item>
             <el-dropdown-item command="logout" divided>
-              <el-icon><SwitchButton /></el-icon>
+              <el-icon>
+                <SwitchButton />
+              </el-icon>
               退出登录
             </el-dropdown-item>
           </el-dropdown-menu>
@@ -78,7 +94,7 @@ const handleCommand = async (command) => {
         cancelButtonText: '取消',
         type: 'warning'
       })
-      
+
       clearAuth()
       ElMessage.success('已退出登录')
       router.push('/login')
@@ -86,7 +102,7 @@ const handleCommand = async (command) => {
       // 用户取消
     }
   } else if (command === 'profile') {
-    ElMessage.info('个人信息功能开发中...')
+    router.push('/profile')
   }
 }
 </script>
@@ -160,15 +176,15 @@ const handleCommand = async (command) => {
   .toolbar {
     padding: 12px 16px;
   }
-  
+
   .toolbar-left {
     gap: 20px;
   }
-  
+
   .toolbar-left h1 {
     font-size: 18px;
   }
-  
+
   .nav-link {
     padding: 6px 12px;
     font-size: 13px;
@@ -183,40 +199,40 @@ const handleCommand = async (command) => {
     padding: 12px;
     gap: 12px;
   }
-  
+
   .toolbar-left {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
     width: 100%;
   }
-  
+
   .toolbar-left h1 {
     font-size: 16px;
   }
-  
+
   .toolbar-nav {
     width: 100%;
     justify-content: flex-start;
     gap: 6px;
   }
-  
+
   .nav-link {
     flex: 1;
     justify-content: center;
     padding: 8px 8px;
     font-size: 12px;
   }
-  
+
   .nav-link .el-icon {
     display: none;
   }
-  
+
   .toolbar-right {
     width: 100%;
     justify-content: stretch;
   }
-  
+
   .toolbar-right .el-button {
     flex: 1;
     font-size: 13px;
@@ -228,12 +244,12 @@ const handleCommand = async (command) => {
   .toolbar-left h1 .el-icon {
     display: none;
   }
-  
+
   .nav-link {
     padding: 6px 4px;
     font-size: 11px;
   }
-  
+
   .toolbar-right .el-button span {
     display: none;
   }
