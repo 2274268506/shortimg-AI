@@ -1,0 +1,186 @@
+# Prometheus 告警规则
+groups:
+  # 服务可用性告警
+  - name: service_availability
+    interval: 30s
+    rules:
+      # 服务宕机
+      - alert: ServiceDown
+        expr: up{job="short-link-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "短链服务不可用"
+          description: "{{ $labels.instance }} 服务已停止响应超过1分钟"
+
+      # 健康检查失败
+      - alert: HealthCheckFailed
+        expr: probe_success{job="short-link-service"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "健康检查失败"
+          description: "{{ $labels.instance }} 健康检查失败"
+
+  # 性能告警
+  - name: performance
+    interval: 30s
+    rules:
+      # QPS 突然下降
+      - alert: QPSDropped
+        expr: |
+          (rate(http_requests_total[5m])
+          / rate(http_requests_total[5m] offset 15m)) < 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "QPS 大幅下降"
+          description: "QPS 下降超过50%，当前值: {{ $value }}"
+
+      # 响应时间过长
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "响应延迟过高"
+          description: "P99 延迟超过1秒: {{ $value }}s"
+
+      # 重定向延迟过高
+      - alert: RedirectHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(redirect_duration_seconds_bucket[5m])
+          ) > 0.5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "重定向延迟过高"
+          description: "P95 重定向延迟超过500ms: {{ $value }}s"
+
+  # 错误率告警
+  - name: error_rate
+    interval: 30s
+    rules:
+      # 高错误率
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "错误率过高"
+          description: "5xx 错误率超过5%: {{ $value | humanizePercentage }}"
+
+      # API 错误
+      - alert: APIErrors
+        expr: rate(api_errors_total[5m]) > 10
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 错误频繁"
+          description: "API 错误率: {{ $value }}/s"
+
+  # 资源使用告警
+  - name: resource_usage
+    interval: 30s
+    rules:
+      # 连接数过高
+      - alert: HighConnections
+        expr: active_connections > 8000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "活跃连接数过高"
+          description: "当前连接数: {{ $value }}"
+
+      # 速率限制频繁触发
+      - alert: RateLimitExceeded
+        expr: rate(rate_limit_exceeded_total[5m]) > 100
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "速率限制频繁触发"
+          description: "速率限制触发: {{ $value }}/s"
+
+  # 缓存性能告警
+  - name: cache_performance
+    interval: 30s
+    rules:
+      # Redis 缓存命中率低
+      - alert: LowCacheHitRate
+        expr: cache_hit_rate{cache_type="redis"} < 0.7
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis 缓存命中率低"
+          description: "缓存命中率: {{ $value | humanizePercentage }}"
+
+      # 本地缓存命中率低
+      - alert: LowLocalCacheHitRate
+        expr: cache_hit_rate{cache_type="local"} < 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "本地缓存命中率低"
+          description: "本地缓存命中率: {{ $value | humanizePercentage }}"
+
+  # 数据库告警
+  - name: database
+    interval: 30s
+    rules:
+      # MySQL 查询慢
+      - alert: SlowMySQLQueries
+        expr: |
+          histogram_quantile(0.95,
+            rate(mysql_query_duration_seconds_bucket[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL 查询慢"
+          description: "P95 查询时间超过1秒: {{ $value }}s"
+
+      # Redis 操作慢
+      - alert: SlowRedisOperations
+        expr: |
+          histogram_quantile(0.95,
+            rate(redis_operation_duration_seconds_bucket[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis 操作慢"
+          description: "P95 Redis 操作时间超过100ms: {{ $value }}s"
+
+  # 业务指标告警
+  - name: business_metrics
+    interval: 60s
+    rules:
+      # 短链数量异常增长
+      - alert: ShortLinksRapidGrowth
+        expr: |
+          (short_links_total - short_links_total offset 1h) > 10000
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "短链数量快速增长"
+          description: "1小时内新增 {{ $value }} 条短链"

@@ -1,0 +1,79 @@
+services:
+  openresty:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: short-link-openresty-test
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./logs:/usr/local/openresty/nginx/logs
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-your_password}
+      - MYSQL_DATABASE=short_links
+      - REDIRECT_DOMAIN=${REDIRECT_DOMAIN:-short.example.com}
+      - REDIRECT_PROTOCOL=${REDIRECT_PROTOCOL:-https}
+      - CDN_NORTH_TELECOM_DOMAIN=${CDN_NORTH_TELECOM_DOMAIN:-cdn-north.example.com}
+      - CDN_NORTH_TELECOM_PROTOCOL=${CDN_NORTH_TELECOM_PROTOCOL:-https}
+      - CDN_SOUTH_UNICOM_DOMAIN=${CDN_SOUTH_UNICOM_DOMAIN:-cdn-south.example.com}
+      - CDN_SOUTH_UNICOM_PROTOCOL=${CDN_SOUTH_UNICOM_PROTOCOL:-https}
+      - CDN_OVERSEAS_DOMAIN=${CDN_OVERSEAS_DOMAIN:-cdn-overseas.example.com}
+      - CDN_OVERSEAS_PROTOCOL=${CDN_OVERSEAS_PROTOCOL:-https}
+      - TC_GO_PRIMARY_DOMAIN=${TC_GO_PRIMARY_DOMAIN:-imagebed.example.com}
+      - TC_GO_PRIMARY_PROTOCOL=${TC_GO_PRIMARY_PROTOCOL:-https}
+      - TC_GO_BACKUP_DOMAIN=${TC_GO_BACKUP_DOMAIN:-imagebed-backup.example.com}
+      - TC_GO_BACKUP_PROTOCOL=${TC_GO_BACKUP_PROTOCOL:-https}
+      - CDN_FALLBACK_DOMAIN=${CDN_FALLBACK_DOMAIN:-cdn-fallback.example.com}
+      - CDN_FALLBACK_PROTOCOL=${CDN_FALLBACK_PROTOCOL:-https}
+    depends_on:
+      - redis
+      - mysql
+    networks:
+      - short-link-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: short-link-redis-test
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    networks:
+      - short-link-network
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: short-link-mysql-test
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=your_password
+      - MYSQL_DATABASE=short_links
+      - MYSQL_USER=short_link
+      - MYSQL_PASSWORD=short_link_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - short-link-network
+    restart: unless-stopped
+
+networks:
+  short-link-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  mysql-data:

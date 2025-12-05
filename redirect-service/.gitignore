@@ -1,0 +1,40 @@
+# 环境变量文件（包含敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 日志文件
+logs/
+*.log
+
+# GeoIP 数据库文件（体积较大）
+geoip/*.mmdb
+
+# SSL 证书
+certs/
+*.pem
+*.key
+*.crt
+
+# 临时文件
+*.tmp
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# IDE 文件
+.vscode/
+.idea/
+*.sublime-*
+
+# Docker 相关
+.docker/
+docker-compose.override.yml
+
+# 备份文件
+*.bak
+*.backup
