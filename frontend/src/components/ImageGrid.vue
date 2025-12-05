@@ -17,8 +17,8 @@
               @click="$emit('preview', image)"
               title="预览"
             />
-            <el-dropdown 
-              @command="(cmd) => $emit('copyLink', image, cmd)" 
+            <el-dropdown
+              @command="(cmd) => $emit('copyLink', image, cmd)"
               trigger="click"
             >
               <el-button :icon="Link" circle size="small" title="复制链接" />
@@ -32,6 +32,15 @@
               </template>
             </el-dropdown>
             <el-button
+              v-if="image.shortLinkUrl"
+              :icon="Link"
+              circle
+              size="small"
+              type="primary"
+              @click="$emit('copyShortLink', image)"
+              title="复制短链"
+            />
+            <el-button
               :icon="Download"
               circle
               size="small"
@@ -39,7 +48,7 @@
               title="下载"
             />
           </div>
-          
+
           <div class="overlay-row">
             <el-button
               :icon="PriceTag"
@@ -116,7 +125,7 @@ defineProps({
   }
 })
 
-defineEmits(['preview', 'copyLink', 'download', 'delete', 'editTags', 'edit', 'convert'])
+defineEmits(['preview', 'copyLink', 'download', 'delete', 'editTags', 'edit', 'convert', 'copyShortLink'])
 
 // 添加时间戳参数以避免缓存
 const getImageUrl = (image) => {
@@ -296,7 +305,7 @@ const parseTags = (tagsStr) => {
     gap: 16px;
     padding: 16px;
   }
-  
+
   .image-card {
     max-width: none;
   }
@@ -309,41 +318,41 @@ const parseTags = (tagsStr) => {
     gap: 12px;
     padding: 12px;
   }
-  
+
   .image-wrapper {
     height: 140px;
   }
-  
+
   .image-info {
     padding: 6px 8px;
   }
-  
+
   .image-name {
     font-size: 12px;
   }
-  
+
   .image-meta {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
   }
-  
+
   .image-size,
   .image-views {
     font-size: 11px;
   }
-  
+
   /* 移动端简化悬停操作 */
   .image-overlay {
     opacity: 1;
     background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
     padding: 8px;
   }
-  
+
   .overlay-row {
     gap: 4px;
   }
-  
+
   .image-overlay .el-button {
     width: 28px;
     height: 28px;
@@ -358,36 +367,36 @@ const parseTags = (tagsStr) => {
     gap: 8px;
     padding: 8px;
   }
-  
+
   .image-wrapper {
     height: 120px;
   }
-  
+
   .image-info {
     padding: 4px 6px;
   }
-  
+
   .image-name {
     font-size: 11px;
   }
-  
+
   .image-tags {
     display: none;
   }
-  
+
   .image-meta {
     font-size: 10px;
   }
-  
+
   /* 移动端只显示最重要的按钮 */
   .overlay-row:first-child {
     display: flex;
   }
-  
+
   .overlay-row:last-child {
     display: none;
   }
-  
+
   .image-overlay .el-button {
     width: 24px;
     height: 24px;

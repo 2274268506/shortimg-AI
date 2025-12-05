@@ -1,7 +1,7 @@
 <template>
   <div class="image-manager">
     <!-- 顶部工具栏 -->
-    <ImageToolbar 
+    <ImageToolbar
       @upload="showUploadDialog = true"
       @createAlbum="handleShowCreateAlbum"
     />
@@ -9,12 +9,12 @@
     <!-- 主要内容区域 -->
     <div class="content">
       <!-- 移动端侧边栏遮罩 -->
-      <div 
-        v-if="showMobileSidebar" 
+      <div
+        v-if="showMobileSidebar"
         class="sidebar-overlay"
         @click="showMobileSidebar = false"
       ></div>
-      
+
       <!-- 左侧相册列表 -->
       <AlbumSidebar
         :class="{ 'mobile-open': showMobileSidebar }"
@@ -26,7 +26,7 @@
       />
 
       <!-- 右侧图片列表 -->
-      <div 
+      <div
         class="main-content"
         @drop.prevent="handleDrop"
         @dragover.prevent="handleDragOver"
@@ -44,18 +44,18 @@
         <!-- 内容头部 -->
         <div class="content-header">
           <div class="header-left">
-            <el-button 
+            <el-button
               class="mobile-menu-btn"
-              :icon="Menu" 
-              circle 
+              :icon="Menu"
+              circle
               @click="showMobileSidebar = !showMobileSidebar"
             />
             <h2>{{ currentAlbum?.name || '未选择相册' }}</h2>
           </div>
           <div class="header-actions">
-            <el-select 
-              v-model="sortByValue" 
-              placeholder="排序方式" 
+            <el-select
+              v-model="sortByValue"
+              placeholder="排序方式"
               style="width: 140px; margin-right: 12px;"
               @change="handleSortChange"
             >
@@ -130,6 +130,7 @@
             :images="images"
             @preview="previewImage"
             @copyLink="copyImageLink"
+            @copyShortLink="copyShortLink"
             @download="downloadImage"
             @delete="handleDeleteImage"
             @editTags="handleEditTags"
@@ -143,6 +144,7 @@
             :images="images"
             @preview="previewImage"
             @copyLink="copyImageLink"
+            @copyShortLink="copyShortLink"
             @download="downloadImage"
             @delete="handleDeleteImage"
             @editTags="handleEditTags"
@@ -402,7 +404,7 @@ const handleSearch = async () => {
 // 标签筛选
 const handleTagFilter = async () => {
   if (!currentAlbum.value) return
-  
+
   if (selectedTag.value) {
     // 使用标签搜索 API
     try {
@@ -423,7 +425,7 @@ const handleSortChange = async () => {
   const parts = sortByValue.value.split('-')
   store.sortBy = parts[0]
   store.order = parts[1]
-  
+
   if (currentAlbum.value) {
     await store.loadImages(currentAlbum.value.id, searchKeyword.value)
   }
@@ -440,20 +442,20 @@ const handleUpload = async ({ albumId, files }) => {
   uploadProgress.value = 0
   uploadStatus.value = ''
   const totalFiles = files.length
-  
+
   try {
     uploadMessage.value = `准备上传 ${totalFiles} 个文件...`
     uploadProgress.value = 10
-    
+
     uploadMessage.value = `正在上传 ${totalFiles} 个文件...`
     uploadProgress.value = 30
-    
+
     await store.batchUploadImages(files, albumId)
-    
+
     uploadProgress.value = 100
     uploadStatus.value = 'success'
     uploadMessage.value = `成功上传 ${totalFiles} 个文件`
-    
+
     setTimeout(() => {
       ElMessage.success('上传成功')
       showUploadDialog.value = false
@@ -461,7 +463,7 @@ const handleUpload = async ({ albumId, files }) => {
       uploadStatus.value = ''
       uploadMessage.value = ''
     }, 1000)
-    
+
     if (albumId === currentAlbum.value?.id) {
       await store.loadImages(currentAlbum.value.id)
     }
@@ -491,13 +493,13 @@ const handleDragLeave = (e) => {
 
 const handleDrop = async (e) => {
   isDragging.value = false
-  
+
   if (!currentAlbum.value) {
     ElMessage.warning('请先选择相册')
     return
   }
 
-  const files = Array.from(e.dataTransfer.files).filter(file => 
+  const files = Array.from(e.dataTransfer.files).filter(file =>
     file.type.startsWith('image/')
   )
 
@@ -507,7 +509,7 @@ const handleDrop = async (e) => {
   }
 
   uploadAlbumId.value = currentAlbum.value.id
-  
+
   uploading.value = true
   uploadProgress.value = 0
   uploadStatus.value = 'uploading'
@@ -531,13 +533,13 @@ const handleDrop = async (e) => {
 
     uploadStatus.value = 'success'
     uploadMessage.value = `成功上传 ${successCount}/${files.length} 张图片`
-    
+
     if (successCount > 0) {
       await store.loadImages(uploadAlbumId.value, searchKeyword.value)
       await store.loadAlbums()
       ElMessage.success(`成功上传 ${successCount} 张图片`)
     }
-    
+
     setTimeout(() => {
       uploading.value = false
       uploadProgress.value = 0
@@ -560,6 +562,42 @@ const handleDeleteImage = async (id) => {
     await store.loadAlbums()
   } catch (error) {
     ElMessage.error('删除失败')
+  }
+}
+
+// 复制短链
+const copyShortLink = async (image) => {
+  if (!image.shortLinkUrl) {
+    ElMessage.warning('该图片暂无短链')
+    return
+  }
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(image.shortLinkUrl)
+      ElMessage.success('短链已复制到剪贴板')
+    } else {
+      // 降级方案
+      const textArea = document.createElement('textarea')
+      textArea.value = image.shortLinkUrl
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
+      document.body.appendChild(textArea)
+      textArea.select()
+
+      try {
+        document.execCommand('copy')
+        ElMessage.success('短链已复制到剪贴板')
+      } catch (err) {
+        ElMessage.error('复制失败，请手动复制')
+        console.error('复制失败:', err)
+      }
+
+      document.body.removeChild(textArea)
+    }
+  } catch (err) {
+    ElMessage.error('复制失败')
+    console.error('复制失败:', err)
   }
 }
 
@@ -601,7 +639,7 @@ const handleImageEditorSave = async ({ type, data }) => {
       await api.updateImageFile(editingImage.value.id, data.blob)
       ElMessage.success('图片已更新')
     }
-    
+
     // 重新加载图片列表
     await store.loadImages(currentAlbum.value.id, searchKeyword.value)
     showImageEditor.value = false
@@ -621,7 +659,7 @@ const handleFormatConverted = async (convertedData) => {
   // 重新加载图片列表以显示转换后的图片
   await store.loadImages(currentAlbum.value.id, searchKeyword.value)
   await store.loadAlbums() // 刷新相册统计信息
-  
+
   // 清空状态
   convertingImage.value = null
   selectedImages.value = []
@@ -777,21 +815,21 @@ const handleFormatConverted = async (convertedData) => {
   .content {
     flex-direction: column;
   }
-  
+
   .content-header {
     padding: 16px;
   }
-  
+
   .content-header h2 {
     font-size: 16px;
     width: 100%;
   }
-  
+
   .header-actions {
     width: 100%;
     justify-content: flex-start;
   }
-  
+
   .header-actions .el-select,
   .header-actions .el-input {
     width: auto !important;
@@ -805,7 +843,7 @@ const handleFormatConverted = async (convertedData) => {
   .image-manager {
     height: calc(100vh - 120px);
   }
-  
+
   .sidebar-overlay {
     display: block;
     position: fixed;
@@ -816,42 +854,42 @@ const handleFormatConverted = async (convertedData) => {
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999;
   }
-  
+
   .mobile-menu-btn {
     display: inline-flex;
   }
-  
+
   .content-header {
     padding: 12px;
   }
-  
+
   .content-header h2 {
     font-size: 15px;
   }
-  
+
   .header-left {
     flex: 1;
   }
-  
+
   .header-actions {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .header-actions .el-select,
   .header-actions .el-input,
   .header-actions .el-radio-group {
     width: 100% !important;
   }
-  
+
   .drag-hint {
     padding: 20px;
   }
-  
+
   .drag-icon {
     font-size: 48px;
   }
-  
+
   .drag-text {
     font-size: 14px;
   }
@@ -862,15 +900,15 @@ const handleFormatConverted = async (convertedData) => {
   .image-manager {
     height: calc(100vh - 140px);
   }
-  
+
   .content-header {
     padding: 10px;
   }
-  
+
   .content-header h2 {
     font-size: 14px;
   }
-  
+
   .header-actions .el-select .el-input__inner,
   .header-actions .el-input .el-input__inner {
     font-size: 13px;

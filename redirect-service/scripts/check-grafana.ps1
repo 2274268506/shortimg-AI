@@ -85,4 +85,9 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  URL: http://localhost:3000" -ForegroundColor White
 Write-Host "  用户名: admin" -ForegroundColor White
 Write-Host "  密码: admin" -ForegroundColor White
+Write-Host "`n  📊 可用仪表板:" -ForegroundColor Cyan
+Write-Host "  1. 短链服务监控总览 (系统性能)" -ForegroundColor White
+Write-Host "     http://localhost:3000/d/short-link-overview" -ForegroundColor Gray
+Write-Host "  2. 短链管理面板 (业务数据)" -ForegroundColor White
+Write-Host "     http://localhost:3000/d/short-link-management" -ForegroundColor Gray
 Write-Host "`n  提示: 首次登录后会要求修改密码（可跳过）`n" -ForegroundColor Gray

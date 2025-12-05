@@ -1,0 +1,616 @@
+{
+  "title": "短链管理面板",
+  "uid": "short-link-management",
+  "tags": [
+    "short-link",
+    "management",
+    "admin"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "title": "短链创建趋势",
+      "type": "graph",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rate(short_link_http_requests_total{endpoint=\"/api/shorten\",status=\"200\"}[5m]) * 60",
+          "legendFormat": "创建成功 (次/分钟)",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(short_link_http_requests_total{endpoint=\"/api/shorten\",status=~\"4..\"}[5m]) * 60",
+          "legendFormat": "客户端错误 (次/分钟)",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(short_link_http_requests_total{endpoint=\"/api/shorten\",status=~\"5..\"}[5m]) * 60",
+          "legendFormat": "服务器错误 (次/分钟)",
+          "refId": "C"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "创建速率"
+        }
+      ]
+    },
+    {
+      "title": "短链查询趋势",
+      "type": "graph",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rate(short_link_http_requests_total{endpoint=\"/api/info\",status=\"200\"}[5m]) * 60",
+          "legendFormat": "查询成功 (次/分钟)",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(short_link_http_requests_total{endpoint=\"/api/info\",status=\"404\"}[5m]) * 60",
+          "legendFormat": "短链不存在 (次/分钟)",
+          "refId": "B"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "查询速率"
+        }
+      ]
+    },
+    {
+      "title": "短链总数统计",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "short_link_short_links_total",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 10000,
+                "color": "yellow"
+              },
+              {
+                "value": 100000,
+                "color": "orange"
+              },
+              {
+                "value": 1000000,
+                "color": "red"
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "title": "今日创建数",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "increase(short_link_http_requests_total{endpoint=\"/api/shorten\",status=\"200\"}[24h])",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1000,
+                "color": "yellow"
+              },
+              {
+                "value": 5000,
+                "color": "red"
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "title": "今日访问数",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "increase(short_link_redirect_requests_total[24h])",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 10000,
+                "color": "yellow"
+              },
+              {
+                "value": 50000,
+                "color": "red"
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "title": "创建成功率",
+      "type": "gauge",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(short_link_http_requests_total{endpoint=\"/api/shorten\",status=\"200\"}[5m])) / sum(rate(short_link_http_requests_total{endpoint=\"/api/shorten\"}[5m])) * 100",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 90,
+                "color": "yellow"
+              },
+              {
+                "value": 95,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "API 响应时间分布",
+      "type": "graph",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(short_link_http_request_duration_seconds_bucket{endpoint=\"/api/shorten\"}[5m]))",
+          "legendFormat": "创建 P50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(short_link_http_request_duration_seconds_bucket{endpoint=\"/api/shorten\"}[5m]))",
+          "legendFormat": "创建 P95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(short_link_http_request_duration_seconds_bucket{endpoint=\"/api/info\"}[5m]))",
+          "legendFormat": "查询 P50",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(short_link_http_request_duration_seconds_bucket{endpoint=\"/api/info\"}[5m]))",
+          "legendFormat": "查询 P95",
+          "refId": "D"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "s",
+          "label": "响应时间"
+        }
+      ]
+    },
+    {
+      "title": "数据库查询性能",
+      "type": "graph",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(short_link_mysql_query_duration_seconds_bucket{query_type=\"select\"}[5m]))",
+          "legendFormat": "SELECT P95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(short_link_mysql_query_duration_seconds_bucket{query_type=\"insert\"}[5m]))",
+          "legendFormat": "INSERT P95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(short_link_mysql_query_duration_seconds_bucket{query_type=\"update\"}[5m]))",
+          "legendFormat": "UPDATE P95",
+          "refId": "C"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "s",
+          "label": "查询时间"
+        }
+      ]
+    },
+    {
+      "title": "热门短链 Top 10 (按访问量)",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "topk(10, rate(short_link_redirect_requests_total[1h]))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "访问速率 (次/秒)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "短链创建来源分布",
+      "type": "piechart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "sum by (method) (rate(short_link_http_requests_total{endpoint=\"/api/shorten\"}[1h]))",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "pieType": "pie",
+        "displayLabels": [
+          "percent"
+        ]
+      }
+    },
+    {
+      "title": "缓存效率",
+      "type": "graph",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "short_link_cache_hit_rate{cache_type=\"l1\"} * 100",
+          "legendFormat": "L1 缓存命中率",
+          "refId": "A"
+        },
+        {
+          "expr": "short_link_cache_hit_rate{cache_type=\"l2\"} * 100",
+          "legendFormat": "L2 缓存命中率",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(short_link_redis_operations_total{operation=\"get\"}[5m])",
+          "legendFormat": "Redis GET 操作/秒",
+          "refId": "C",
+          "yAxis": 2
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "percent",
+          "label": "命中率",
+          "max": 100,
+          "min": 0
+        },
+        {
+          "format": "ops",
+          "label": "操作速率"
+        }
+      ]
+    },
+    {
+      "title": "错误类型分布",
+      "type": "graph",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum by (error_type) (rate(short_link_api_errors_total[5m]))",
+          "legendFormat": "{{ error_type }}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "ops",
+          "label": "错误速率"
+        }
+      ]
+    },
+    {
+      "title": "批量操作统计",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "increase(short_link_http_requests_total{endpoint=\"/api/batch/shorten\"}[1h])",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "short",
+          "displayName": "批量创建 (最近1小时)"
+        }
+      }
+    },
+    {
+      "title": "删除操作统计",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "increase(short_link_http_requests_total{endpoint=\"/api/delete\"}[1h])",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "blue"
+              }
+            ]
+          },
+          "unit": "short",
+          "displayName": "删除操作 (最近1小时)"
+        }
+      }
+    },
+    {
+      "title": "更新操作统计",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "increase(short_link_http_requests_total{endpoint=\"/api/update\"}[1h])",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "purple"
+              }
+            ]
+          },
+          "unit": "short",
+          "displayName": "更新操作 (最近1小时)"
+        }
+      }
+    }
+  ]
+}

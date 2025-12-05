@@ -25,6 +25,24 @@
         <el-tag type="success" size="small">{{ row.viewCount || 0 }}</el-tag>
       </template>
     </el-table-column>
+    <el-table-column label="短链" width="120">
+      <template #default="{ row }">
+        <el-button
+          v-if="row.shortLinkUrl"
+          :icon="Link"
+          size="small"
+          type="primary"
+          plain
+          @click="$emit('copyShortLink', row)"
+          title="复制短链"
+        >
+          复制短链
+        </el-button>
+        <el-tag v-else type="info" size="small" effect="plain">
+          无短链
+        </el-tag>
+      </template>
+    </el-table-column>
     <el-table-column label="上传时间" width="180">
       <template #default="{ row }">
         {{ formatDate(row.createdAt) }}
@@ -109,7 +127,7 @@ defineProps({
   }
 })
 
-defineEmits(['preview', 'copyLink', 'download', 'delete', 'editTags', 'edit', 'convert'])
+defineEmits(['preview', 'copyLink', 'download', 'delete', 'editTags', 'edit', 'convert', 'copyShortLink'])
 
 // 添加时间戳参数以避免缓存
 const getImageUrl = (image) => {
@@ -160,16 +178,16 @@ const formatDate = (dateStr) => {
   :deep(.el-table) {
     font-size: 12px;
   }
-  
+
   :deep(.el-table th),
   :deep(.el-table td) {
     padding: 8px 0;
   }
-  
+
   :deep(.el-table .cell) {
     padding: 0 4px;
   }
-  
+
   .table-thumbnail {
     width: 40px;
     height: 40px;
@@ -181,17 +199,17 @@ const formatDate = (dateStr) => {
   :deep(.el-table) {
     font-size: 11px;
   }
-  
+
   :deep(.el-table th),
   :deep(.el-table td) {
     padding: 6px 0;
   }
-  
+
   .table-thumbnail {
     width: 35px;
     height: 35px;
   }
-  
+
   :deep(.el-button) {
     padding: 4px 8px;
     font-size: 11px;

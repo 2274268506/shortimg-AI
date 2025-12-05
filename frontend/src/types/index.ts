@@ -29,6 +29,9 @@ export interface Image {
   tags: string
   createdAt: string
   updatedAt: string
+  // 短链字段
+  shortLinkCode?: string
+  shortLinkUrl?: string
 }
 
 // 统计数据类型

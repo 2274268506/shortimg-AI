@@ -78,6 +78,11 @@ type Config struct {
 	LogMaxAge     int // days
 	LogMaxBackups int
 
+	// 短链服务配置
+	ShortLinkEnabled bool   // 是否启用短链功能
+	ShortLinkBaseURL string // 短链服务地址
+	ShortLinkExpire  int64  // 短链默认过期时间（秒），0表示永不过期
+
 	// 旧字段保持兼容性
 	AllowedReferers []string
 	DatabasePath    string // 兼容旧配置
@@ -177,6 +182,11 @@ func LoadConfig() *Config {
 		LogMaxSize:    getEnvAsInt("LOG_MAX_SIZE", 100),
 		LogMaxAge:     getEnvAsInt("LOG_MAX_AGE", 30),
 		LogMaxBackups: getEnvAsInt("LOG_MAX_BACKUPS", 10),
+
+		// 短链服务配置
+		ShortLinkEnabled: getEnvAsBool("SHORT_LINK_ENABLED", false),
+		ShortLinkBaseURL: getEnv("SHORT_LINK_BASE_URL", "http://localhost"),
+		ShortLinkExpire:  getEnvAsInt64("SHORT_LINK_EXPIRE", 0),
 
 		// 兼容旧配置
 		AllowedReferers: []string{"localhost", "127.0.0.1"},

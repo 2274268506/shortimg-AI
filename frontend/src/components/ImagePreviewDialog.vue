@@ -85,7 +85,7 @@
         <div class="detail-item">
           <span class="detail-label">图片链接:</span>
           <div class="detail-value link-value">
-            <el-input 
+            <el-input
               :model-value="fullImageUrl"
               readonly
               size="small"
@@ -105,6 +105,16 @@
             </el-dropdown>
           </div>
         </div>
+        <!-- 短链信息 -->
+        <div v-if="image?.shortLinkUrl" class="short-link-section">
+          <ShortLinkInfo
+            :short-link-code="image.shortLinkCode"
+            :short-link-url="image.shortLinkUrl"
+            :file-name="image.fileName"
+            :show-q-r-code="true"
+            :show-stats="false"
+          />
+        </div>
       </div>
     </div>
     <template #footer>
@@ -122,6 +132,7 @@
 import { computed, watch, ref } from 'vue'
 import { Link, Download, ArrowDown, User, Lock, View, Check, Close } from '@element-plus/icons-vue'
 import { recordView, getImageStats } from '@/api'
+import ShortLinkInfo from './ShortLinkInfo.vue'
 
 const props = defineProps({
   modelValue: {
@@ -247,6 +258,10 @@ const formatDate = (dateStr) => {
   .link-value {
     display: flex;
     align-items: center;
+  }
+
+  .short-link-section {
+    margin-top: 20px;
   }
 }
 </style>

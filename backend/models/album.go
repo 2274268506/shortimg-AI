@@ -47,11 +47,14 @@ type Image struct {
 	LastViewAt    *time.Time `json:"lastViewAt"`                           // 最后访问时间
 	Tags          string     `json:"tags"`                                 // 标签，逗号分隔
 	// 权限控制字段
-	OwnerID       uint           `json:"ownerId" gorm:"index;not null"`             // 所有者ID
-	Owner         *User          `json:"owner,omitempty" gorm:"foreignKey:OwnerID"` // 所有者信息
-	IsPrivate     bool           `json:"isPrivate" gorm:"default:false;index"`      // 是否私有
-	IsPublic      bool           `json:"isPublic" gorm:"default:true"`              // 是否公开
-	AllowDownload bool           `json:"allowDownload" gorm:"default:true"`         // 是否允许下载
+	OwnerID       uint  `json:"ownerId" gorm:"index;not null"`             // 所有者ID
+	Owner         *User `json:"owner,omitempty" gorm:"foreignKey:OwnerID"` // 所有者信息
+	IsPrivate     bool  `json:"isPrivate" gorm:"default:false;index"`      // 是否私有
+	IsPublic      bool  `json:"isPublic" gorm:"default:true"`              // 是否公开
+	AllowDownload bool  `json:"allowDownload" gorm:"default:true"`         // 是否允许下载
+	// 短链字段
+	ShortLinkCode string         `json:"shortLinkCode" gorm:"index"` // 短链代码
+	ShortLinkURL  string         `json:"shortLinkUrl" gorm:"-"`      // 短链完整URL（不存储）
 	CreatedAt     time.Time      `json:"createdAt"`
 	UpdatedAt     time.Time      `json:"updatedAt"`
 	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
