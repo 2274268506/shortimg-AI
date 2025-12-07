@@ -111,10 +111,42 @@ else
     echo -e "${GREEN}✅ MySQL 配置文件已存在${NC}"
 fi
 
-# 步骤 5: 启动服务
+# 步骤 5: 修复目录权限
 echo ""
-echo "🚀 步骤 5/5: 启动服务..."
-docker-compose -f docker-compose.prod.yml pull
+echo "🔧 步骤 5/6: 修复目录权限..."
+
+# MySQL 目录权限（MySQL 容器使用 UID 999）
+echo "  • 设置 MySQL 权限..."
+chown -R 999:999 $DATA_ROOT/mysql/data 2>/dev/null || true
+chown -R 999:999 $DATA_ROOT/mysql/logs 2>/dev/null || true
+chmod -R 755 $DATA_ROOT/mysql/data
+chmod -R 755 $DATA_ROOT/mysql/logs
+
+# Redis 目录权限（Redis 容器使用 UID 999）
+echo "  • 设置 Redis 权限..."
+chown -R 999:999 $DATA_ROOT/redis/data 2>/dev/null || true
+chmod -R 755 $DATA_ROOT/redis/data
+
+# Backend 目录权限（使用 UID 1000，与 Dockerfile 中的 appuser 一致）
+echo "  • 设置 Backend 权限..."
+chown -R 1000:1000 $DATA_ROOT/backend/uploads
+chown -R 1000:1000 $DATA_ROOT/backend/logs
+chown -R 1000:1000 $DATA_ROOT/backend/data
+chmod -R 755 $DATA_ROOT/backend/uploads
+chmod -R 755 $DATA_ROOT/backend/logs
+chmod -R 755 $DATA_ROOT/backend/data
+
+if [ -d "$DATA_ROOT/backend/config" ]; then
+    chown -R 1000:1000 $DATA_ROOT/backend/config
+    chmod -R 755 $DATA_ROOT/backend/config
+fi
+
+echo -e "${GREEN}✅ 目录权限设置完成${NC}"
+
+# 步骤 6: 启动服务
+echo ""
+echo "🚀 步骤 6/6: 启动服务..."
+#docker-compose -f docker-compose.prod.yml pull
 docker-compose -f docker-compose.prod.yml up -d --build
 
 # 等待服务启动

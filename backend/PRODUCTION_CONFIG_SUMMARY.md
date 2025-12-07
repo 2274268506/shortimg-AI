@@ -282,6 +282,9 @@ crontab -e
 
 - **API 文档**: `http://your-domain.com/swagger/index.html`
 - **健康检查**: `http://your-domain.com/health`
+- **详细健康检查**: `http://your-domain.com/health/detailed`
+- **就绪检查**: `http://your-domain.com/health/ready`
+- **存活检查**: `http://your-domain.com/health/live`
 - **后端 API**: `http://your-domain.com/api`
 
 ## 🔧 常用命令
