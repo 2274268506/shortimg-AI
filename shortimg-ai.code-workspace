@@ -1,0 +1,28 @@
+{
+  "folders": [
+    {
+      "name": "Frontend",
+      "path": "frontend"
+    },
+    {
+      "name": "Backend",
+      "path": "backend"
+    },
+    {
+      "name": "Redirect Service",
+      "path": "redirect-service"
+    },
+    {
+      "name": "Root",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "go.goroot": "",
+    "go.gopath": "",
+    "go.toolsManagement.autoUpdate": true,
+    "gopls": {
+      "experimentalWorkspaceModule": true
+    }
+  }
+}

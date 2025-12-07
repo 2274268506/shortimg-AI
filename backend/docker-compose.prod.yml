@@ -1,0 +1,176 @@
+version: '3.8'
+
+# ==========================================
+# 🖼️ ShortImg-AI 图床系统 - 生产环境配置
+# ==========================================
+# 数据持久化路径: /root/docker/shortimg-ai
+# ==========================================
+
+services:
+  # MySQL 数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: shortimg-mysql-prod
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_secure_root_password_here}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-imagebed}
+      MYSQL_USER: ${MYSQL_USER:-imagebed_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-your_secure_password_here}
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      # 数据持久化
+      - /root/docker/shortimg-ai/mysql/data:/var/lib/mysql
+      # 初始化脚本
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # MySQL 配置文件
+      - /root/docker/shortimg-ai/mysql/conf:/etc/mysql/conf.d
+      # 日志
+      - /root/docker/shortimg-ai/mysql/logs:/var/log/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --max-connections=1000
+      - --innodb-buffer-pool-size=2G
+      - --innodb-log-file-size=256M
+      - --innodb-flush-log-at-trx-commit=2
+      - --slow-query-log=1
+      - --slow-query-log-file=/var/log/mysql/slow.log
+      - --long-query-time=2
+    networks:
+      - shortimg-prod
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Redis 缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: shortimg-redis-prod
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      # 数据持久化
+      - /root/docker/shortimg-ai/redis/data:/data
+      # Redis 配置文件
+      - /root/docker/shortimg-ai/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    networks:
+      - shortimg-prod
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # 后端 API 服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: shortimg-backend:latest
+    container_name: shortimg-backend-prod
+    restart: always
+    environment:
+      # 数据库配置
+      DB_TYPE: mysql
+      DB_DSN: ${MYSQL_USER:-imagebed_user}:${MYSQL_PASSWORD:-your_secure_password_here}@tcp(mysql:3306)/${MYSQL_DATABASE:-imagebed}?charset=utf8mb4&parseTime=True&loc=Local
+      
+      # Redis 配置
+      REDIS_ENABLED: "true"
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: 0
+      CACHE_TTL: 30m
+      
+      # 服务器配置
+      SERVER_PORT: 8080
+      SERVER_MODE: release
+      
+      # JWT 配置
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_minimum_32_characters_long}
+      JWT_EXPIRATION: 24h
+      
+      # 用户管理
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+      
+      # 文件上传配置
+      UPLOAD_PATH: /app/uploads
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-100}
+      
+      # 存储配置
+      STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      STORAGE_LOCAL_PATH: /app/uploads
+      STORAGE_BASE_URL: ${STORAGE_BASE_URL:-/api/files}
+      
+      # 日志配置
+      LOG_PATH: /app/logs/app.log
+      LOG_MAX_SIZE: 100
+      LOG_MAX_AGE: 30
+      LOG_MAX_BACKUPS: 10
+      
+      # 短链服务配置
+      SHORT_LINK_ENABLED: ${SHORT_LINK_ENABLED:-true}
+      SHORT_LINK_BASE_URL: ${SHORT_LINK_BASE_URL:-https://your-domain.com/s}
+      
+      # CORS 配置
+      CORS_ENABLED: "true"
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-https://your-domain.com}
+      CORS_ALLOW_METHODS: GET,POST,PUT,PATCH,DELETE,OPTIONS
+      CORS_ALLOW_HEADERS: Origin,Content-Type,Accept,Authorization
+      CORS_MAX_AGE: 12
+      
+      # 时区
+      TZ: Asia/Shanghai
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      # 上传文件持久化
+      - /root/docker/shortimg-ai/backend/uploads:/app/uploads
+      # 日志持久化
+      - /root/docker/shortimg-ai/backend/logs:/app/logs
+      # 数据文件持久化 (如果使用 SQLite)
+      - /root/docker/shortimg-ai/backend/data:/app/data
+      # 配置文件 (可选)
+      - /root/docker/shortimg-ai/backend/config:/app/config:ro
+    networks:
+      - shortimg-prod
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  shortimg-prod:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# 注意：数据卷使用宿主机路径，无需定义命名卷
+# 所有数据将持久化到 /root/docker/shortimg-ai/ 目录下
