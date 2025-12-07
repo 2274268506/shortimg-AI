@@ -11,9 +11,9 @@ import (
 // Album 相册模型
 type Album struct {
 	ID          uint   `json:"id" gorm:"primarykey"`
-	Name        string `json:"name" gorm:"not null;index"` // 改为普通索引，允许同名相册
-	Description string `json:"description"`
-	CoverImage  string `json:"coverImage"`
+	Name        string `json:"name" gorm:"type:varchar(255);not null;index"` // 改为普通索引，允许同名相册
+	Description string `json:"description" gorm:"type:text"`
+	CoverImage  string `json:"coverImage" gorm:"type:varchar(500)"`
 	ImageCount  int    `json:"imageCount" gorm:"default:0"`
 	// 权限控制字段
 	OwnerID     uint   `json:"ownerId" gorm:"index;not null"`             // 所有者ID
@@ -33,21 +33,21 @@ type Album struct {
 // Image 图片模型
 type Image struct {
 	ID            uint       `json:"id" gorm:"primarykey"`
-	UUID          string     `json:"uuid" gorm:"uniqueIndex;not null"` // UUID 唯一标识
+	UUID          string     `json:"uuid" gorm:"type:varchar(100);uniqueIndex;not null"` // UUID 唯一标识
 	AlbumID       uint       `json:"albumId" gorm:"index"`
-	FileName      string     `json:"fileName" gorm:"not null"`
-	OriginalName  string     `json:"originalName"` // 原始文件名
-	FilePath      string     `json:"filePath" gorm:"not null"`
+	FileName      string     `json:"fileName" gorm:"type:varchar(255);not null"`
+	OriginalName  string     `json:"originalName" gorm:"type:varchar(255)"` // 原始文件名
+	FilePath      string     `json:"filePath" gorm:"type:varchar(500);not null"`
 	FileSize      int64      `json:"fileSize"`
-	MimeType      string     `json:"mimeType"`
+	MimeType      string     `json:"mimeType" gorm:"type:varchar(100)"`
 	Width         int        `json:"width"`
 	Height        int        `json:"height"`
-	Thumbnail     string     `json:"thumbnail"`
+	Thumbnail     string     `json:"thumbnail" gorm:"type:varchar(500)"`
 	URL           string     `json:"url" gorm:"-"`
 	ViewCount     int64      `json:"viewCount" gorm:"default:0;index"`     // 访问次数
 	DownloadCount int64      `json:"downloadCount" gorm:"default:0;index"` // 下载次数
 	LastViewAt    *time.Time `json:"lastViewAt"`                           // 最后访问时间
-	Tags          string     `json:"tags"`                                 // 标签，逗号分隔
+	Tags          string     `json:"tags" gorm:"type:text"`                // 标签，逗号分隔
 	// 权限控制字段
 	OwnerID       uint  `json:"ownerId" gorm:"index;not null"`             // 所有者ID
 	Owner         *User `json:"owner,omitempty" gorm:"foreignKey:OwnerID"` // 所有者信息
@@ -55,8 +55,8 @@ type Image struct {
 	IsPublic      bool  `json:"isPublic" gorm:"default:true"`              // 是否公开
 	AllowDownload bool  `json:"allowDownload" gorm:"default:true"`         // 是否允许下载
 	// 短链字段
-	ShortLinkCode string         `json:"shortLinkCode" gorm:"index"` // 短链代码
-	ShortLinkURL  string         `json:"shortLinkUrl" gorm:"-"`      // 短链完整URL（不存储）
+	ShortLinkCode string         `json:"shortLinkCode" gorm:"type:varchar(50);index"` // 短链代码
+	ShortLinkURL  string         `json:"shortLinkUrl" gorm:"-"`                       // 短链完整URL（不存储）
 	CreatedAt     time.Time      `json:"createdAt"`
 	UpdatedAt     time.Time      `json:"updatedAt"`
 	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
@@ -74,7 +74,7 @@ func (Image) TableName() string {
 // Statistics 统计模型
 type Statistics struct {
 	ID             uint      `json:"id" gorm:"primarykey"`
-	Date           string    `json:"date" gorm:"uniqueIndex;not null"` // 日期 YYYY-MM-DD
+	Date           string    `json:"date" gorm:"type:varchar(20);uniqueIndex;not null"` // 日期 YYYY-MM-DD
 	TotalViews     int64     `json:"totalViews" gorm:"default:0"`
 	TotalDownloads int64     `json:"totalDownloads" gorm:"default:0"`
 	TotalUploads   int64     `json:"totalUploads" gorm:"default:0"`

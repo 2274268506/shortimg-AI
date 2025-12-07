@@ -15,27 +15,27 @@ type OperationLog struct {
 
 	// 用户信息
 	UserID   uint   `json:"user_id" gorm:"index"`
-	Username string `json:"username"`
+	Username string `json:"username" gorm:"type:varchar(100)"`
 
 	// 操作信息
-	Action      string `json:"action" gorm:"index"` // 操作类型：create, update, delete, upload, download
-	Module      string `json:"module" gorm:"index"` // 模块：image, album, user
-	ResourceID  uint   `json:"resource_id"`         // 资源ID
-	Description string `json:"description"`         // 操作描述
+	Action      string `json:"action" gorm:"type:varchar(50);index"` // 操作类型：create, update, delete, upload, download
+	Module      string `json:"module" gorm:"type:varchar(50);index"` // 模块：image, album, user
+	ResourceID  uint   `json:"resource_id"`                          // 资源ID
+	Description string `json:"description" gorm:"type:text"`         // 操作描述
 
 	// 请求信息
-	Method    string `json:"method"`     // HTTP方法
-	Path      string `json:"path"`       // 请求路径
-	IP        string `json:"ip"`         // 客户端IP
-	UserAgent string `json:"user_agent"` // 用户代理
+	Method    string `json:"method" gorm:"type:varchar(10)"`      // HTTP方法
+	Path      string `json:"path" gorm:"type:varchar(500)"`       // 请求路径
+	IP        string `json:"ip" gorm:"type:varchar(50)"`          // 客户端IP
+	UserAgent string `json:"user_agent" gorm:"type:varchar(500)"` // 用户代理
 
 	// 结果信息
-	Status  int    `json:"status"`  // HTTP状态码
-	Error   string `json:"error"`   // 错误信息
-	Latency int64  `json:"latency"` // 响应时间（毫秒）
+	Status  int    `json:"status"`                 // HTTP状态码
+	Error   string `json:"error" gorm:"type:text"` // 错误信息
+	Latency int64  `json:"latency"`                // 响应时间（毫秒）
 
 	// 额外数据（JSON格式）
-	Extra string `json:"extra"` // 额外信息
+	Extra string `json:"extra" gorm:"type:text"` // 额外信息
 }
 
 // TableName 指定表名
@@ -50,11 +50,11 @@ type SystemLog struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Level   string `json:"level" gorm:"index"`  // 日志级别：debug, info, warn, error, fatal
-	Module  string `json:"module" gorm:"index"` // 模块名称
-	Message string `json:"message"`             // 日志消息
-	Error   string `json:"error"`               // 错误堆栈
-	Extra   string `json:"extra"`               // 额外信息（JSON格式）
+	Level   string `json:"level" gorm:"type:varchar(20);index"`   // 日志级别：debug, info, warn, error, fatal
+	Module  string `json:"module" gorm:"type:varchar(100);index"` // 模块名称
+	Message string `json:"message" gorm:"type:text"`              // 日志消息
+	Error   string `json:"error" gorm:"type:text"`                // 错误堆栈
+	Extra   string `json:"extra" gorm:"type:text"`                // 额外信息（JSON格式）
 }
 
 // TableName 指定表名

@@ -1,0 +1,81 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# 文档
+*.md
+# docs/  # 注释掉,需要 Swagger 文档
+README*
+CHANGELOG*
+LICENSE
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志和临时文件
+*.log
+logs/
+tmp/
+temp/
+
+# 依赖
+node_modules/
+vendor/
+
+# 构建产物
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+test.exe
+
+# 数据文件
+uploads/
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 环境变量
+.env
+.env.*
+!.env.example
+
+# 测试文件
+*_test.go
+test_*.go
+*_test.json
+test_*.json
+*.test
+
+# 前端
+frontend/
+
+# 监控配置
+prometheus.yml
+alertmanager.yml
+alerts.yml
+docker-compose.monitoring.yml
+
+# 脚本
+*.sh
+*.ps1
+*.bat
+Makefile
+
+# SSL 证书（如需要请手动添加）
+ssl/
+*.pem
+*.key
+*.crt
+
+# 其他
+.DS_Store
+Thumbs.db

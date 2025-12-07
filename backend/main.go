@@ -89,11 +89,17 @@ func main() {
 	// 设置路由
 	r := routes.SetupRoutes()
 
+	// 设置最大上传大小（用于批量上传）
+	r.MaxMultipartMemory = cfg.MaxFileSize * 1024 * 1024 * 10 // 设置为单文件大小的10倍
+
 	// 创建 HTTP 服务器
 	addr := fmt.Sprintf(":%s", cfg.ServerPort)
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: r,
+		Addr:         addr,
+		Handler:      r,
+		ReadTimeout:  5 * time.Minute, // 读取超时5分钟（用于大文件上传）
+		WriteTimeout: 5 * time.Minute, // 写入超时5分钟
+		IdleTimeout:  2 * time.Minute, // 空闲连接超时
 	}
 
 	// 在 goroutine 中启动服务器

@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# 文档
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志
+logs/
+*.log
+
+# 临时文件
+tmp/
+temp/
+
+# 测试文件
+*.test.yml
+test_*.json
+
+# 环境变量
+.env
+.env.*
+!.env.example
+
+# 其他
+.DS_Store
+Thumbs.db

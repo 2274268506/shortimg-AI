@@ -6,6 +6,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"imagebed/cache"
 	"imagebed/config"
 	"imagebed/database"
 	"imagebed/middleware"
@@ -170,6 +171,9 @@ func UploadImage(c *gin.Context) {
 	if album.CoverImage == "" {
 		db.Model(&album).Update("cover_image", generateImageURL(imageRecord.UUID))
 	}
+
+	// 清除缓存，确保上传后立即可见
+	clearImageListCache(uint64(albumID))
 
 	// 构造返回的URL
 	imageRecord.URL = generateImageURL(imageRecord.UUID)
@@ -457,6 +461,9 @@ func DeleteImage(c *gin.Context) {
 	db.Model(&models.Album{}).Where("id = ? AND image_count > 0", imageRecord.AlbumID).
 		Update("image_count", gorm.Expr("image_count - ?", 1))
 
+	// 清除缓存，确保删除后立即生效
+	clearImageListCache(uint64(imageRecord.AlbumID))
+
 	c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
 }
 
@@ -624,6 +631,9 @@ func BatchUpload(c *gin.Context) {
 	if len(uploadedImages) > 0 {
 		db.Model(&models.Album{}).Where("id = ?", albumID).
 			Update("image_count", gorm.Expr("image_count + ?", len(uploadedImages)))
+
+		// 清除图片列表相关的缓存，确保上传后立即可见
+		clearImageListCache(albumID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -1060,4 +1070,18 @@ func GetSupportedFormats(c *gin.Context) {
 			"animated":  animated,
 		},
 	})
+}
+
+// clearImageListCache 清除图片列表相关的缓存
+func clearImageListCache(albumID uint64) {
+	// 由于缓存键使用MD5哈希，无法通过模式精确匹配
+	// 这里清除所有API缓存以确保数据一致性
+	// 注意：这会影响所有用户的缓存，但确保了实时性
+
+	pattern := "cache:*"
+	if err := cache.DeletePattern(pattern); err != nil {
+		fmt.Printf("清除缓存失败: %v\n", err)
+	} else {
+		fmt.Printf("已清除所有API缓存（相册 %d 有更新）\n", albumID)
+	}
 }
