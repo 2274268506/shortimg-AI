@@ -174,6 +174,47 @@ func UploadImage(c *gin.Context) {
 	// 构造返回的URL
 	imageRecord.URL = generateImageURL(imageRecord.UUID)
 
+	// 检查是否需要生成短链
+	// 优先级：请求参数 > 相册配置
+	generateShortLink := false
+	if enableShortLinkStr := c.PostForm("enableShortLink"); enableShortLinkStr != "" {
+		// 如果请求中明确指定了是否生成短链，使用请求参数
+		generateShortLink = enableShortLinkStr == "true" || enableShortLinkStr == "1"
+	} else {
+		// 否则使用相册的配置
+		generateShortLink = album.EnableShortLink
+	}
+
+	// 生成短链
+	if generateShortLink {
+		shortLinkClient := utils.NewShortLinkClient(cfg.ShortLinkBaseURL, cfg.ShortLinkAPIKey)
+
+		// 使用CDN路径而不是完整URL，让短链服务根据GeoIP分流
+		imagePath := imageRecord.URL // 例如: /uploads/xxx.jpg
+
+		shortLinkReq := &utils.ShortLinkRequest{
+			ImagePath: imagePath, // 只传路径，短链服务会根据访问者IP自动选择CDN
+			Metadata: map[string]interface{}{
+				"image_id":      imageRecord.ID,
+				"album_id":      imageRecord.AlbumID,
+				"original_name": imageRecord.OriginalName,
+				"file_size":     imageRecord.FileSize,
+			},
+		}
+
+		if shortLink, err := shortLinkClient.CreateShortLink(shortLinkReq); err == nil {
+			// 保存短链信息到数据库
+			imageRecord.ShortLinkCode = shortLink.Code
+			db.Model(&imageRecord).Updates(map[string]interface{}{
+				"short_link_code": shortLink.Code,
+			})
+			// 设置完整短链URL用于返回
+			imageRecord.ShortLinkURL = shortLink.ShortURL
+		} else {
+			fmt.Printf("生成短链失败: %v\n", err)
+		}
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"data": imageRecord})
 }
 
@@ -282,9 +323,18 @@ func GetImages(c *gin.Context) {
 		return
 	}
 
-	// 添加URL
+	// 添加URL和短链URL
+	cfg := config.GetConfig()
 	for i := range images {
 		images[i].URL = generateImageURL(images[i].UUID)
+		// 如果有短链代码，构造完整的短链URL
+		if images[i].ShortLinkCode != "" {
+			shortLinkHost := cfg.ShortLinkBaseURL
+			if shortLinkHost == "" {
+				shortLinkHost = "http://localhost"
+			}
+			images[i].ShortLinkURL = fmt.Sprintf("%s/%s", shortLinkHost, images[i].ShortLinkCode)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": images, "total": total, "page": page, "pageSize": pageSize})
@@ -302,6 +352,15 @@ func GetImage(c *gin.Context) {
 	}
 
 	imageRecord.URL = generateImageURL(imageRecord.UUID)
+	// 如果有短链代码，构造完整的短链URL
+	if imageRecord.ShortLinkCode != "" {
+		cfg := config.GetConfig()
+		shortLinkHost := cfg.ShortLinkBaseURL
+		if shortLinkHost == "" {
+			shortLinkHost = "http://localhost"
+		}
+		imageRecord.ShortLinkURL = fmt.Sprintf("%s/%s", shortLinkHost, imageRecord.ShortLinkCode)
+	}
 	c.JSON(http.StatusOK, gin.H{"data": imageRecord})
 }
 
@@ -415,15 +474,41 @@ func BatchUpload(c *gin.Context) {
 		albumIDStr = "1"
 	}
 
+	albumID, _ := strconv.ParseUint(albumIDStr, 10, 32)
+
+	// 获取相册信息，检查短链配置
+	db := database.GetDB()
+	var album models.Album
+	if err := db.First(&album, albumID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "相册不存在"})
+		return
+	}
+
+	// 获取当前用户信息
+	userID, _ := c.Get("userID")
+
+	// 检查是否需要生成短链
+	generateShortLink := false
+	enableShortLinkStr := c.PostForm("enableShortLink")
+	fmt.Printf("========== 批量上传调试 ==========\n")
+	fmt.Printf("请求参数 enableShortLink: %s\n", enableShortLinkStr)
+	fmt.Printf("相册 EnableShortLink: %v\n", album.EnableShortLink)
+
+	if enableShortLinkStr != "" {
+		generateShortLink = enableShortLinkStr == "true" || enableShortLinkStr == "1"
+		fmt.Printf("使用请求参数，generateShortLink: %v\n", generateShortLink)
+	} else {
+		generateShortLink = album.EnableShortLink
+		fmt.Printf("使用相册配置，generateShortLink: %v\n", generateShortLink)
+	}
+
 	var uploadedImages []models.Image
 	var errors []string
+	var shortLinkImages []utils.ImageInfo // 用于批量生成短链
 
 	for _, file := range files {
 		// 为每个文件创建一个临时context来处理
 		c.Request.Header.Set("Content-Type", "multipart/form-data")
-
-		// 这里简化处理，实际应该复用UploadImage的逻辑
-		albumID, _ := strconv.ParseUint(albumIDStr, 10, 32)
 
 		ext := strings.ToLower(filepath.Ext(file.Filename))
 
@@ -461,19 +546,22 @@ func BatchUpload(c *gin.Context) {
 		}
 
 		imageRecord := models.Image{
-			UUID:         imageUUID,
-			AlbumID:      uint(albumID),
-			FileName:     newFileName,
-			OriginalName: file.Filename,
-			FilePath:     filePath,
-			FileSize:     file.Size,
-			MimeType:     file.Header.Get("Content-Type"),
-			Width:        width,
-			Height:       height,
-			Thumbnail:    thumbnailPath,
+			UUID:          imageUUID,
+			AlbumID:       uint(albumID),
+			FileName:      newFileName,
+			OriginalName:  file.Filename,
+			FilePath:      filePath,
+			FileSize:      file.Size,
+			MimeType:      file.Header.Get("Content-Type"),
+			Width:         width,
+			Height:        height,
+			Thumbnail:     thumbnailPath,
+			OwnerID:       userID.(uint),
+			IsPrivate:     album.IsPrivate,
+			IsPublic:      album.IsPublic,
+			AllowDownload: true,
 		}
 
-		db := database.GetDB()
 		if err := db.Create(&imageRecord).Error; err != nil {
 			os.Remove(filePath)
 			errors = append(errors, fmt.Sprintf("%s: 保存记录失败", file.Filename))
@@ -482,12 +570,58 @@ func BatchUpload(c *gin.Context) {
 
 		imageRecord.URL = generateImageURL(imageRecord.UUID)
 		uploadedImages = append(uploadedImages, imageRecord)
+
+		// 准备短链信息（使用CDN路径）
+		if generateShortLink {
+			imagePath := imageRecord.URL // 只使用路径，如 /uploads/xxx.jpg
+			shortLinkImages = append(shortLinkImages, utils.ImageInfo{
+				ImagePath: imagePath, // 传递路径而不是完整URL
+				Metadata: map[string]interface{}{
+					"image_id":      imageRecord.ID,
+					"album_id":      imageRecord.AlbumID,
+					"original_name": imageRecord.OriginalName,
+					"file_size":     imageRecord.FileSize,
+				},
+			})
+		}
+	}
+
+	// 批量生成短链
+	fmt.Printf("准备生成短链: generateShortLink=%v, shortLinkImages数量=%d\n", generateShortLink, len(shortLinkImages))
+	if generateShortLink && len(shortLinkImages) > 0 {
+		fmt.Printf("开始批量生成短链...\n")
+		shortLinkClient := utils.NewShortLinkClient(cfg.ShortLinkBaseURL, cfg.ShortLinkAPIKey)
+		batchReq := &utils.BatchShortLinkRequest{
+			Images: shortLinkImages,
+		}
+
+		if batchResp, err := shortLinkClient.BatchCreateShortLinks(batchReq); err == nil {
+			fmt.Printf("批量生成短链成功，返回结果数量: %d\n", len(batchResp.Results))
+			// 更新图片记录的短链信息
+			for i, result := range batchResp.Results {
+				fmt.Printf("处理结果 %d: Success=%v, Code=%s, ShortURL=%s, Error=%s\n",
+					i, result.Success, result.Code, result.ShortURL, result.Error)
+				if result.Success && i < len(uploadedImages) {
+					uploadedImages[i].ShortLinkCode = result.Code
+					uploadedImages[i].ShortLinkURL = result.ShortURL
+					fmt.Printf("更新图片 %d 短链: code=%s, url=%s\n", uploadedImages[i].ID, result.Code, result.ShortURL)
+					db.Model(&uploadedImages[i]).Updates(map[string]interface{}{
+						"short_link_code": result.Code,
+					})
+				} else {
+					fmt.Printf("跳过更新: Success=%v, 索引=%d, uploadedImages数量=%d\n",
+						result.Success, i, len(uploadedImages))
+				}
+			}
+		} else {
+			fmt.Printf("批量生成短链失败: %v\n", err)
+		}
+	} else {
+		fmt.Printf("跳过短链生成: generateShortLink=%v, shortLinkImages数量=%d\n", generateShortLink, len(shortLinkImages))
 	}
 
 	// 批量更新相册图片数量
 	if len(uploadedImages) > 0 {
-		albumID, _ := strconv.ParseUint(albumIDStr, 10, 32)
-		db := database.GetDB()
 		db.Model(&models.Album{}).Where("id = ?", albumID).
 			Update("image_count", gorm.Expr("image_count + ?", len(uploadedImages)))
 	}

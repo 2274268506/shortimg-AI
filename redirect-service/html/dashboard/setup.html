@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Key 设置 - 短链管理系统</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #666;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .current-key {
+      background: #f5f5f5;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .current-key h3 {
+      color: #333;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .current-key code {
+      background: #fff;
+      padding: 8px 12px;
+      border-radius: 4px;
+      display: block;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      color: #667eea;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 25px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .btn-danger {
+      background: #ff5252;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #ff1744;
+    }
+
+    .test-key-btn {
+      width: 100%;
+      background: #4caf50;
+      color: white;
+      margin-top: 10px;
+    }
+
+    .test-key-btn:hover {
+      background: #45a049;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .alert-info {
+      background: #e3f2fd;
+      color: #1976d2;
+      border-left: 4px solid #2196f3;
+    }
+
+    .alert-success {
+      background: #e8f5e9;
+      color: #388e3c;
+      border-left: 4px solid #4caf50;
+    }
+
+    .alert-error {
+      background: #ffebee;
+      color: #c62828;
+      border-left: 4px solid #f44336;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .default-key {
+      background: #fff3e0;
+      border: 1px dashed #ff9800;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .default-key h3 {
+      color: #f57c00;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .default-key code {
+      background: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      display: block;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      color: #e65100;
+      margin-bottom: 10px;
+    }
+
+    .quick-set {
+      background: #ff9800;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .quick-set:hover {
+      background: #f57c00;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔑 API Key 设置</h1>
+    <p class="subtitle">配置您的 API Key 以访问短链管理系统</p>
+
+    <div id="message"></div>
+
+    <div class="current-key" id="current-key-section" style="display: none;">
+      <h3>当前 API Key</h3>
+      <code id="current-key"></code>
+    </div>
+
+    <div class="form-group">
+      <label for="api-key-input">API Key</label>
+      <input type="text" id="api-key-input" placeholder="sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+      <div class="help-text">请输入您的 API Key（以 sk_ 开头）</div>
+    </div>
+
+    <div class="button-group">
+      <button class="btn-primary" onclick="saveApiKey()">保存并进入</button>
+      <button class="btn-secondary" onclick="testConnection()">测试连接</button>
+      <button class="btn-danger" onclick="clearApiKey()">清除</button>
+    </div>
+
+    <div class="default-key">
+      <h3>📌 默认测试 API Key</h3>
+      <code>sk_test_12345678901234567890123456789012</code>
+      <button class="quick-set" onclick="useDefaultKey()">使用默认 Key</button>
+    </div>
+  </div>
+
+  <script>
+    // 页面加载时检查当前 API Key
+    window.addEventListener('DOMContentLoaded', () => {
+      const currentKey = localStorage.getItem('api_key');
+      if (currentKey) {
+        document.getElementById('current-key').textContent = currentKey;
+        document.getElementById('current-key-section').style.display = 'block';
+        document.getElementById('api-key-input').value = currentKey;
+      }
+    });
+
+    // 保存 API Key
+    function saveApiKey() {
+      const input = document.getElementById('api-key-input');
+      const apiKey = input.value.trim();
+
+      if (!apiKey) {
+        showMessage('请输入 API Key', 'error');
+        return;
+      }
+
+      if (!apiKey.startsWith('sk_')) {
+        showMessage('API Key 格式错误，应以 sk_ 开头', 'error');
+        return;
+      }
+
+      localStorage.setItem('api_key', apiKey);
+      showMessage('API Key 保存成功！', 'success');
+
+      // 2秒后跳转到 dashboard
+      setTimeout(() => {
+        window.location.href = '/dashboard/';
+      }, 2000);
+    }
+
+    // 使用默认 Key
+    function useDefaultKey() {
+      const defaultKey = 'sk_test_12345678901234567890123456789012';
+      document.getElementById('api-key-input').value = defaultKey;
+      showMessage('已填入默认测试 Key，点击"保存并进入"按钮继续', 'info');
+    }
+
+    // 测试连接
+    async function testConnection() {
+      const input = document.getElementById('api-key-input');
+      const apiKey = input.value.trim();
+
+      if (!apiKey) {
+        showMessage('请先输入 API Key', 'error');
+        return;
+      }
+
+      showMessage('正在测试连接...', 'info');
+
+      try {
+        const response = await fetch('/api/v1/stats/overview', {
+          headers: {
+            'X-API-Key': apiKey
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          showMessage('✅ 连接成功！API Key 有效', 'success');
+        } else {
+          showMessage('❌ 连接失败: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showMessage('❌ 连接失败: ' + error.message, 'error');
+      }
+    }
+
+    // 清除 API Key
+    function clearApiKey() {
+      if (confirm('确定要清除保存的 API Key 吗？')) {
+        localStorage.removeItem('api_key');
+        document.getElementById('api-key-input').value = '';
+        document.getElementById('current-key-section').style.display = 'none';
+        showMessage('API Key 已清除', 'info');
+      }
+    }
+
+    // 显示消息
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.innerHTML = `<div class="alert alert-${type}">${text}</div>`;
+
+      if (type !== 'error') {
+        setTimeout(() => {
+          messageDiv.innerHTML = '';
+        }, 5000);
+      }
+    }
+  </script>
+</body>
+
+</html>

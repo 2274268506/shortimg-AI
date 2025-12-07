@@ -23,17 +23,31 @@ function _M.init()
     mysql_client.init(config.mysql)
     logger.info("MySQL initialized: " .. config.mysql.host .. ":" .. config.mysql.port)
 
-    -- 加载 GeoIP 数据库（测试环境暂时禁用）
-    -- local geoip = require "utils.geoip"
-    -- geoip.init(config.geoip)
-    -- logger.info("GeoIP databases loaded")
+    -- 加载 GeoIP 数据库（使用 lua-resty-maxminddb）
+    local ok, err = pcall(function()
+        local geoip = require "utils.geoip"
+        geoip.init(config.geoip)
+        logger.info("GeoIP databases loaded")
+    end)
 
-    -- 初始化健康检查（测试环境暂时禁用，需要 resty.http 模块）
-    -- local health_checker = require "core.health_checker"
-    -- health_checker.start()
-    -- logger.info("Health checker started")
+    if not ok then
+        logger.warn("GeoIP initialization failed: " .. (err or "unknown error"))
+        logger.warn("GeoIP features will be disabled")
+    end
 
-    ngx.log(ngx.INFO, "OpenResty initialized successfully (simplified mode for testing)")
+    -- 初始化健康检查（使用 lua-resty-http）
+    local ok, err = pcall(function()
+        local health_checker = require "core.health_checker"
+        health_checker.start()
+        logger.info("Health checker started")
+    end)
+
+    if not ok then
+        logger.warn("Health checker initialization failed: " .. (err or "unknown error"))
+        logger.warn("Health check features will be disabled")
+    end
+
+    ngx.log(ngx.INFO, "OpenResty initialized successfully")
 end
 
 -- 在 init_by_lua 阶段调用

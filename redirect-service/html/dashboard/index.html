@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>短链管理系统</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     * {
       margin: 0;
@@ -203,6 +204,21 @@
       color: #ff4d4f;
     }
 
+    .badge-info {
+      background: #e6f7ff;
+      color: #1890ff;
+    }
+
+    .badge-primary {
+      background: #f0f5ff;
+      color: #597ef7;
+    }
+
+    .badge-secondary {
+      background: #f5f5f5;
+      color: #8c8c8c;
+    }
+
     .modal {
       display: none;
       position: fixed;
@@ -302,6 +318,282 @@
       opacity: 0.3;
     }
 
+    /* 新增样式 - 步骤指示器 */
+    .steps-indicator {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      padding: 0 20px;
+    }
+
+    .step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+    }
+
+    .step::after {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      width: 100%;
+      height: 2px;
+      background: #e8e8e8;
+      z-index: -1;
+    }
+
+    .step:last-child::after {
+      display: none;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
+      background: #e8e8e8;
+      color: #999;
+      border-radius: 50%;
+      margin: 0 auto 8px;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+
+    .step.active .step-number {
+      background: #1890ff;
+      color: #fff;
+    }
+
+    .step.completed .step-number {
+      background: #52c41a;
+      color: #fff;
+    }
+
+    .step-label {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .step.active .step-label {
+      color: #1890ff;
+      font-weight: 500;
+    }
+
+    /* 表单步骤 */
+    .form-step {
+      display: none;
+    }
+
+    .form-step.active {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 输入组 */
+    .input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .input-group input {
+      flex: 1;
+    }
+
+    .btn-icon {
+      padding: 10px 15px;
+      background: #f5f5f5;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+
+    .btn-icon:hover {
+      background: #e8e8e8;
+      border-color: #1890ff;
+    }
+
+    /* 帮助文本 */
+    .help-text {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #999;
+    }
+
+    .help-text code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      color: #1890ff;
+    }
+
+    .optional {
+      color: #999;
+      font-weight: normal;
+      font-size: 12px;
+    }
+
+    .info-box {
+      background: #e6f7ff;
+      border: 1px solid #91d5ff;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #0050b3;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .info-box .icon {
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .target-config {
+      margin-top: 12px;
+    }
+
+    /* 徽章组 */
+    .badge-group {
+      margin-left: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 12px;
+      border-radius: 12px;
+      font-weight: normal;
+    }
+
+    .badge-primary {
+      background: #e6f7ff;
+      color: #1890ff;
+    }
+
+    .badge-secondary {
+      background: #f5f5f5;
+      color: #999;
+    }
+
+    /* 模式切换 */
+    .mode-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .mode-btn {
+      padding: 16px;
+      border: 2px solid #e8e8e8;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .mode-btn:hover {
+      border-color: #1890ff;
+      background: #f0f8ff;
+    }
+
+    .mode-btn.active {
+      border-color: #1890ff;
+      background: #e6f7ff;
+    }
+
+    .mode-btn .icon {
+      font-size: 24px;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .mode-btn .text {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .mode-btn small {
+      display: block;
+      color: #999;
+      font-size: 12px;
+    }
+
+    /* 模式内容 */
+    .mode-content {
+      display: none;
+    }
+
+    .mode-content.active {
+      display: block;
+    }
+
+    /* 快速模板 */
+    .quick-templates {
+      margin-top: 8px;
+    }
+
+    .btn-xs {
+      padding: 4px 12px;
+      font-size: 12px;
+      background: #f5f5f5;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 8px;
+      transition: all 0.3s;
+    }
+
+    .btn-xs:hover {
+      background: #1890ff;
+      color: #fff;
+      border-color: #1890ff;
+    }
+
+    .btn-help {
+      padding: 2px 8px;
+      font-size: 12px;
+      background: #fff;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+
+    .btn-help:hover {
+      border-color: #1890ff;
+      color: #1890ff;
+    }
+
+    /* 操作栏 */
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      padding-top: 20px;
+      border-top: 1px solid #e8e8e8;
+    }
+
     .pagination {
       display: flex;
       gap: 10px;
@@ -327,14 +619,60 @@
       color: #fff;
       border-color: #1890ff;
     }
+
+    /* 详情页面样式 */
+    .info-section {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e8e8e8;
+    }
+
+    .info-section h3 {
+      margin: 0 0 15px 0;
+      color: #333;
+      font-size: 16px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .info-item label {
+      font-size: 12px;
+      color: #999;
+      font-weight: 500;
+    }
+
+    .info-item div {
+      font-size: 14px;
+      color: #333;
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
     <header>
-      <h1>🔗 短链管理系统</h1>
-      <p>统一管理和监控您的所有短链接</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1>🔗 短链管理系统</h1>
+          <p>统一管理和监控您的所有短链接</p>
+        </div>
+        <div id="api-key-status" style="text-align: right;">
+          <small style="color: #999;">API Key: <span id="api-key-display">未设置</span></small>
+          <br>
+          <a href="/dashboard/setup.html" style="font-size: 12px; color: #1890ff;">设置 API Key</a>
+        </div>
+      </div>
     </header>
 
     <!-- 统计卡片 -->
@@ -376,6 +714,21 @@
         <div class="action-bar">
           <button class="btn" onclick="showCreateModal()">+ 创建短链</button>
           <button class="btn btn-secondary" onclick="refreshLinks()">刷新</button>
+          <select id="service-type-filter" style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px;">
+            <option value="">全部类型</option>
+            <option value="general">通用</option>
+            <option value="imagebed">图床</option>
+            <option value="file">文件</option>
+            <option value="video">视频</option>
+            <option value="api">API</option>
+          </select>
+          <select id="status-filter" style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px;">
+            <option value="">全部状态</option>
+            <option value="active">活跃</option>
+            <option value="inactive">已禁用</option>
+            <option value="deleted">已删除</option>
+            <option value="expired">已过期</option>
+          </select>
           <input type="text" id="search-input" placeholder="搜索短链..."
             style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px; flex: 1; max-width: 300px;">
         </div>
@@ -384,6 +737,7 @@
           <thead>
             <tr>
               <th>短链代码</th>
+              <th>类型</th>
               <th>策略</th>
               <th>状态</th>
               <th>访问量</th>
@@ -393,7 +747,7 @@
           </thead>
           <tbody id="links-tbody">
             <tr>
-              <td colspan="6" class="loading">加载中...</td>
+              <td colspan="7" class="loading">加载中...</td>
             </tr>
           </tbody>
         </table>
@@ -489,39 +843,280 @@
 
   <!-- 模态框 -->
   <div class="modal" id="create-modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 700px;">
       <div class="modal-header">
-        <h2>创建短链</h2>
+        <h2>📝 创建短链</h2>
         <button class="close-btn" onclick="closeModal('create-modal')">&times;</button>
       </div>
       <form id="create-form">
-        <div class="form-group">
-          <label>短链代码 *</label>
-          <input type="text" name="short_code" required placeholder="例如: abc123">
+        <!-- 步骤指示器 -->
+        <div class="steps-indicator">
+          <div class="step active" data-step="1">
+            <div class="step-number">1</div>
+            <div class="step-label">基本信息</div>
+          </div>
+          <div class="step" data-step="2">
+            <div class="step-number">2</div>
+            <div class="step-label">目标配置</div>
+          </div>
+          <div class="step" data-step="3">
+            <div class="step-number">3</div>
+            <div class="step-label">高级选项</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label>目标 URL (JSON) *</label>
-          <textarea name="targets" required placeholder='[{"cdn":"north_telecom","path":"/image.jpg"}]'></textarea>
+
+        <!-- 步骤 1: 基本信息 -->
+        <div class="form-step active" data-step="1">
+          <div class="form-group">
+            <label>服务类型 *</label>
+            <select id="service_type" name="service_type" required onchange="updateServiceHelp()">
+              <option value="">-- 请选择 --</option>
+              <option value="imagebed">🖼️ 图床服务</option>
+              <option value="general">🔗 通用短链</option>
+              <option value="file">📁 文件分享</option>
+              <option value="video">🎬 视频服务</option>
+            </select>
+            <small class="help-text" id="service-help">选择短链的用途类型</small>
+          </div>
+
+          <div class="form-group">
+            <label>描述 <span class="optional">(可选)</span></label>
+            <input type="text" id="description" name="description" placeholder="简短描述这个短链的用途">
+            <small class="help-text">短链码将由后端自动生成</small>
+          </div>
         </div>
+
+        <!-- 步骤 2: 目标配置 -->
+        <div class="form-step" data-step="2">
+          <!-- 通用服务类型：URL输入 -->
+          <div id="general-target" class="target-config">
+            <div class="form-group">
+              <label>目标 URL *</label>
+              <input type="url" id="target_url" placeholder="https://www.example.com/page.html">
+              <small class="help-text">输入完整的目标URL地址（如：https://www.baidu.com）</small>
+            </div>
+          </div>
+
+          <!-- 其他服务类型：路径输入 -->
+          <div id="cdn-target" class="target-config" style="display: none;">
+            <div class="form-group">
+              <label>资源路径 *</label>
+              <input type="text" id="target_path" placeholder="/uploads/2025/12/image.jpg">
+              <small class="help-text">输入资源路径，域名将由后端根据CDN分流规则自动处理</small>
+            </div>
+            <div class="info-box">
+              <span class="icon">ℹ️</span>
+              <span>CDN分流由后端自动处理，会根据用户地理位置、运营商等信息选择最优CDN节点</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 步骤 3: 高级选项 -->
+        <div class="form-step" data-step="3">
+          <div class="form-group">
+            <label>过期时间 <span class="optional">(可选)</span></label>
+            <input type="datetime-local" id="expires_at" name="expires_at">
+            <small class="help-text">留空表示永不过期</small>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="enable_cache" name="enable_cache" checked>
+              启用缓存 <span class="optional">(推荐)</span>
+            </label>
+            <small class="help-text">缓存可以提升访问速度，减少服务器压力</small>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="enable_stats" name="enable_stats" checked>
+              启用统计
+            </label>
+            <small class="help-text">记录访问次数、来源等统计信息</small>
+          </div>
+
+          <div class="form-group">
+            <label>过期时间 <span class="optional">(可选)</span></label>
+            <select id="expire_time" name="expire_time">
+              <option value="0">永不过期</option>
+              <option value="3600">1小时</option>
+              <option value="86400">1天</option>
+              <option value="604800">7天</option>
+              <option value="2592000">30天</option>
+              <option value="31536000">1年</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="action-bar" style="margin-top: 30px;">
+          <button type="button" class="btn btn-secondary" id="prev-btn" onclick="prevStep(); return false;"
+            style="display: none;">
+            ← 上一步
+          </button>
+          <button type="button" class="btn" id="next-btn" onclick="nextStep(); return false;">
+            下一步 →
+          </button>
+          <button type="submit" class="btn btn-primary" id="submit-btn" style="display: none;">
+            ✅ 创建短链
+          </button>
+          <button type="button" class="btn btn-secondary" id="close-create-modal-btn"
+            onclick="closeModal('create-modal'); return false;">
+            取消
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 查看详情模态框 -->
+  <div class="modal" id="view-modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h2>🔍 短链详情</h2>
+        <button class="close-btn" onclick="closeModal('view-modal')">&times;</button>
+      </div>
+      <div class="modal-body" id="view-modal-content">
+        <div class="loading">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑模态框 -->
+  <div class="modal" id="edit-modal">
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2>✏️ 编辑短链</h2>
+        <button class="close-btn" onclick="closeModal('edit-modal')">&times;</button>
+      </div>
+      <form id="edit-form">
+        <div class="form-group">
+          <label>短链代码</label>
+          <input type="text" id="edit_short_code" readonly style="background: #f5f5f5;">
+        </div>
+
+        <div class="form-group">
+          <label>服务类型</label>
+          <select id="edit_service_type">
+            <option value="general">通用短链</option>
+            <option value="imagebed">图床服务</option>
+            <option value="file">文件分发</option>
+            <option value="video">视频流媒体</option>
+            <option value="api">API 接口</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>描述</label>
+          <input type="text" id="edit_description" placeholder="可选">
+        </div>
+
+        <div class="form-group">
+          <label>目标配置 (JSON)</label>
+          <textarea id="edit_targets" rows="10"
+            placeholder='[{"cdn": "north_telecom", "path": "/image.jpg", "weight": 1}]'></textarea>
+        </div>
+
         <div class="form-group">
           <label>分流策略</label>
-          <select name="strategy">
+          <select id="edit_strategy">
             <option value="round_robin">轮询</option>
             <option value="random">随机</option>
+            <option value="weight">权重</option>
             <option value="geo">地理位置</option>
-            <option value="weighted">权重</option>
             <option value="isp">ISP</option>
           </select>
         </div>
-        <div class="action-bar">
-          <button type="submit" class="btn">创建</button>
-          <button type="button" class="btn btn-secondary" onclick="closeModal('create-modal')">取消</button>
+
+        <div class="form-group">
+          <label>状态</label>
+          <select id="edit_status">
+            <option value="active">活跃</option>
+            <option value="inactive">已禁用</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('edit-modal')">取消</button>
+          <button type="submit" class="btn">保存更改</button>
         </div>
       </form>
     </div>
   </div>
 
   <script src="dashboard.js"></script>
+  <script src="modal-functions.js"></script>
+  <script>
+    console.log('🔍 HTML 内联脚本执行');
+    console.log('🔍 showCreateModal 函数:', typeof showCreateModal);
+    console.log('🔍 generateRandomCode 函数:', typeof generateRandomCode);
+    console.log('🔍 nextStep 函数:', typeof nextStep);
+
+    // 如果函数未定义，创建备用函数
+    if (typeof generateRandomCode === 'undefined') {
+      console.warn('⚠️ generateRandomCode 未定义，创建备用');
+      window.generateRandomCode = function () {
+        console.log('🎲 备用 generateRandomCode 执行');
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let code = '';
+        for (let i = 0; i < 8; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const input = document.getElementById('short_code');
+        if (input) input.value = code;
+        const preview = document.getElementById('code-preview');
+        if (preview) preview.textContent = code;
+      };
+    }
+
+    if (typeof nextStep === 'undefined') {
+      console.warn('⚠️ nextStep 未定义，创建备用');
+      window.nextStep = function () {
+        console.log('📝 备用 nextStep 执行');
+        alert('下一步功能（备用版本）');
+      };
+    }
+
+    if (typeof prevStep === 'undefined') {
+      console.warn('⚠️ prevStep 未定义，创建备用');
+      window.prevStep = function () {
+        console.log('📝 备用 prevStep 执行');
+        alert('上一步功能（备用版本）');
+      };
+    }
+
+    if (typeof updateServiceHelp === 'undefined') {
+      window.updateServiceHelp = function () {
+        console.log('更新服务帮助（备用）');
+      };
+    }
+
+    if (typeof updatePreviewUrl === 'undefined') {
+      window.updatePreviewUrl = function () {
+        const code = document.getElementById('short_code')?.value || 'your-code';
+        const preview = document.getElementById('code-preview');
+        if (preview) preview.textContent = code;
+      };
+    }
+
+    // 在页面加载后测试
+    window.addEventListener('load', function () {
+      console.log('🔍 页面已加载');
+      console.log('🔍 测试按钮绑定...');
+
+      const createBtn = document.querySelector('button[onclick*="showCreateModal"]');
+      console.log('🔍 创建按钮:', createBtn);
+
+      if (createBtn && typeof showCreateModal === 'function') {
+        console.log('✅ 按钮和函数都存在，手动绑定事件');
+        createBtn.addEventListener('click', function (e) {
+          console.log('👆 按钮被点击！');
+          e.preventDefault();
+          showCreateModal();
+        });
+      }
+    });
+  </script>
 </body>
 
 </html>

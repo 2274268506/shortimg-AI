@@ -16,16 +16,18 @@ type Album struct {
 	CoverImage  string `json:"coverImage"`
 	ImageCount  int    `json:"imageCount" gorm:"default:0"`
 	// 权限控制字段
-	OwnerID     uint           `json:"ownerId" gorm:"index;not null"`             // 所有者ID
-	Owner       *User          `json:"owner,omitempty" gorm:"foreignKey:OwnerID"` // 所有者信息
-	IsPrivate   bool           `json:"isPrivate" gorm:"default:false;index"`      // 是否私有
-	IsPublic    bool           `json:"isPublic" gorm:"default:true"`              // 是否公开（可被其他人查看）
-	AllowShare  bool           `json:"allowShare" gorm:"default:true"`            // 是否允许分享链接
-	SharedUsers string         `json:"sharedUsers,omitempty" gorm:"type:text"`    // 共享给的用户ID列表，逗号分隔
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
-	Images      []Image        `json:"images,omitempty" gorm:"foreignKey:AlbumID"`
+	OwnerID     uint   `json:"ownerId" gorm:"index;not null"`             // 所有者ID
+	Owner       *User  `json:"owner,omitempty" gorm:"foreignKey:OwnerID"` // 所有者信息
+	IsPrivate   bool   `json:"isPrivate" gorm:"default:false;index"`      // 是否私有
+	IsPublic    bool   `json:"isPublic" gorm:"default:true"`              // 是否公开（可被其他人查看）
+	AllowShare  bool   `json:"allowShare" gorm:"default:true"`            // 是否允许分享链接
+	SharedUsers string `json:"sharedUsers,omitempty" gorm:"type:text"`    // 共享给的用户ID列表，逗号分隔
+	// 短链配置字段
+	EnableShortLink bool           `json:"enableShortLink" gorm:"default:false"` // 是否自动为上传的图片生成短链
+	CreatedAt       time.Time      `json:"createdAt"`
+	UpdatedAt       time.Time      `json:"updatedAt"`
+	DeletedAt       gorm.DeletedAt `json:"-" gorm:"index"`
+	Images          []Image        `json:"images,omitempty" gorm:"foreignKey:AlbumID"`
 }
 
 // Image 图片模型

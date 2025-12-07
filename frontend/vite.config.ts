@@ -11,7 +11,9 @@ export default defineConfig({
     }
   },
   server: {
+    host: '127.0.0.1', // 只监听 IPv4 localhost，避免权限问题
     port: 5173,
+    strictPort: false, // 如果端口被占用，自动尝试下一个可用端口
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

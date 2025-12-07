@@ -30,12 +30,15 @@ type Config struct {
 	JWTSecret     string
 	JWTExpiration time.Duration
 
+	// 用户管理配置
+	AllowRegistration bool // 是否允许用户注册
+
 	// 文件上传配置
 	UploadPath  string
 	MaxFileSize int64 // MB
 
 	// 存储配置
-	StorageType string // local, oss, cos, qiniu, s3
+	StorageType string // local, oss, cos, qiniu, s3, webdav, sftp
 
 	// 本地存储配置
 	StorageLocalPath string
@@ -72,6 +75,22 @@ type Config struct {
 	S3BasePath        string
 	S3UseSSL          bool
 
+	// WebDAV配置
+	WebDAVURL      string
+	WebDAVUsername string
+	WebDAVPassword string
+	WebDAVBasePath string
+	WebDAVBaseURL  string // 访问URL前缀
+
+	// SFTP配置
+	SFTPHost       string
+	SFTPPort       int
+	SFTPUsername   string
+	SFTPPassword   string
+	SFTPPrivateKey string // 私钥文件路径
+	SFTPBasePath   string
+	SFTPBaseURL    string // 访问URL前缀
+
 	// 日志配置
 	LogPath       string
 	LogMaxSize    int // MB
@@ -82,6 +101,14 @@ type Config struct {
 	ShortLinkEnabled bool   // 是否启用短链功能
 	ShortLinkBaseURL string // 短链服务地址
 	ShortLinkExpire  int64  // 短链默认过期时间（秒），0表示永不过期
+	ShortLinkAPIKey  string // 短链服务API密钥
+
+	// CORS 跨域配置
+	CORSEnabled      bool     // 是否启用CORS
+	CORSAllowOrigins []string // 允许的源
+	CORSAllowMethods []string // 允许的HTTP方法
+	CORSAllowHeaders []string // 允许的请求头
+	CORSMaxAge       int      // 预检请求缓存时间（小时）
 
 	// 旧字段保持兼容性
 	AllowedReferers []string
@@ -137,6 +164,9 @@ func LoadConfig() *Config {
 		JWTSecret:     getEnv("JWT_SECRET", "your-secret-key-change-this-in-production"),
 		JWTExpiration: getEnvAsDuration("JWT_EXPIRATION", "24h"),
 
+		// 用户管理配置
+		AllowRegistration: getEnvAsBool("ALLOW_REGISTRATION", true),
+
 		// 文件上传配置
 		UploadPath:  uploadPath,
 		MaxFileSize: getEnvAsInt64("MAX_FILE_SIZE", 100),
@@ -177,6 +207,22 @@ func LoadConfig() *Config {
 		S3BasePath:        getEnv("S3_BASE_PATH", ""),
 		S3UseSSL:          getEnvAsBool("S3_USE_SSL", true),
 
+		// WebDAV配置
+		WebDAVURL:      getEnv("WEBDAV_URL", ""),
+		WebDAVUsername: getEnv("WEBDAV_USERNAME", ""),
+		WebDAVPassword: getEnv("WEBDAV_PASSWORD", ""),
+		WebDAVBasePath: getEnv("WEBDAV_BASE_PATH", "/imagebed/"),
+		WebDAVBaseURL:  getEnv("WEBDAV_BASE_URL", ""),
+
+		// SFTP配置
+		SFTPHost:       getEnv("SFTP_HOST", ""),
+		SFTPPort:       getEnvAsInt("SFTP_PORT", 22),
+		SFTPUsername:   getEnv("SFTP_USERNAME", ""),
+		SFTPPassword:   getEnv("SFTP_PASSWORD", ""),
+		SFTPPrivateKey: getEnv("SFTP_PRIVATE_KEY", ""),
+		SFTPBasePath:   getEnv("SFTP_BASE_PATH", "/imagebed/"),
+		SFTPBaseURL:    getEnv("SFTP_BASE_URL", ""),
+
 		// 日志配置
 		LogPath:       getEnv("LOG_PATH", "./logs/app.log"),
 		LogMaxSize:    getEnvAsInt("LOG_MAX_SIZE", 100),
@@ -187,6 +233,14 @@ func LoadConfig() *Config {
 		ShortLinkEnabled: getEnvAsBool("SHORT_LINK_ENABLED", false),
 		ShortLinkBaseURL: getEnv("SHORT_LINK_BASE_URL", "http://localhost"),
 		ShortLinkExpire:  getEnvAsInt64("SHORT_LINK_EXPIRE", 0),
+		ShortLinkAPIKey:  getEnv("SHORT_LINK_API_KEY", ""),
+
+		// CORS 跨域配置
+		CORSEnabled:      getEnvAsBool("CORS_ENABLED", true),
+		CORSAllowOrigins: getEnvAsSlice("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:3000"),
+		CORSAllowMethods: getEnvAsSlice("CORS_ALLOW_METHODS", "GET,POST,PUT,PATCH,DELETE,OPTIONS"),
+		CORSAllowHeaders: getEnvAsSlice("CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization"),
+		CORSMaxAge:       getEnvAsInt("CORS_MAX_AGE", 12),
 
 		// 兼容旧配置
 		AllowedReferers: []string{"localhost", "127.0.0.1"},
@@ -297,6 +351,18 @@ func (c *Config) GetStorageConfig() interface{} {
 		"S3Region":           c.S3Region,
 		"S3BasePath":         c.S3BasePath,
 		"S3UseSSL":           c.S3UseSSL,
+		"WebDAVURL":          c.WebDAVURL,
+		"WebDAVUsername":     c.WebDAVUsername,
+		"WebDAVPassword":     c.WebDAVPassword,
+		"WebDAVBasePath":     c.WebDAVBasePath,
+		"WebDAVBaseURL":      c.WebDAVBaseURL,
+		"SFTPHost":           c.SFTPHost,
+		"SFTPPort":           c.SFTPPort,
+		"SFTPUsername":       c.SFTPUsername,
+		"SFTPPassword":       c.SFTPPassword,
+		"SFTPPrivateKey":     c.SFTPPrivateKey,
+		"SFTPBasePath":       c.SFTPBasePath,
+		"SFTPBaseURL":        c.SFTPBaseURL,
 	}
 }
 
@@ -341,6 +407,70 @@ func getEnvAsDuration(key, defaultValue string) time.Duration {
 		return value
 	}
 	return 10 * time.Minute // 最终默认值
+}
+
+// getEnvAsSlice 从环境变量读取逗号分隔的字符串并转换为切片
+func getEnvAsSlice(key, defaultValue string) []string {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		valueStr = defaultValue
+	}
+
+	// 分割字符串
+	parts := []string{}
+	for _, part := range splitAndTrim(valueStr, ",") {
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	return parts
+}
+
+// splitAndTrim 分割字符串并去除空格
+func splitAndTrim(s, sep string) []string {
+	parts := []string{}
+	for _, part := range splitString(s, sep) {
+		trimmed := trimSpace(part)
+		if trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	return parts
+}
+
+// splitString 简单的字符串分割
+func splitString(s, sep string) []string {
+	if s == "" {
+		return []string{}
+	}
+
+	parts := []string{}
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if i+len(sep) <= len(s) && s[i:i+len(sep)] == sep {
+			parts = append(parts, s[start:i])
+			start = i + len(sep)
+			i += len(sep) - 1
+		}
+	}
+	parts = append(parts, s[start:])
+	return parts
+}
+
+// trimSpace 去除字符串两端空格
+func trimSpace(s string) string {
+	start := 0
+	end := len(s)
+
+	for start < end && (s[start] == ' ' || s[start] == '\t' || s[start] == '\n' || s[start] == '\r') {
+		start++
+	}
+
+	for end > start && (s[end-1] == ' ' || s[end-1] == '\t' || s[end-1] == '\n' || s[end-1] == '\r') {
+		end--
+	}
+
+	return s[start:end]
 }
 
 // isStrongSecret 检查密钥是否足够强

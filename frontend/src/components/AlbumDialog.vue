@@ -17,12 +17,12 @@
           placeholder="请输入相册描述"
         />
       </el-form-item>
-      
+
       <el-divider content-position="left">
         <el-icon><Lock /></el-icon>
         <span style="margin-left: 8px;">隐私设置</span>
       </el-divider>
-      
+
       <el-form-item label="访问权限">
         <el-radio-group v-model="privacyMode" @change="handlePrivacyModeChange">
           <el-radio value="public" style="display: block; margin-bottom: 12px;">
@@ -54,14 +54,30 @@
           </el-radio>
         </el-radio-group>
       </el-form-item>
-      
+
       <el-form-item label="允许分享链接" v-if="privacyMode !== 'private'">
         <el-switch v-model="form.allowShare" />
         <span style="margin-left: 12px; color: var(--el-text-color-secondary); font-size: 13px;">
           允许通过链接分享此相册
         </span>
       </el-form-item>
-      
+
+      <el-divider content-position="left">
+        <el-icon><Link /></el-icon>
+        <span style="margin-left: 8px;">短链设置</span>
+      </el-divider>
+
+      <el-form-item label="自动生成短链">
+        <el-switch v-model="form.enableShortLink" />
+        <div style="margin-left: 12px; color: var(--el-text-color-secondary); font-size: 13px;">
+          <div>开启后，上传到此相册的图片将自动生成短链</div>
+          <div style="margin-top: 4px; color: var(--el-color-primary);">
+            <el-icon><InfoFilled /></el-icon>
+            短链示例: http://localhost/abc123
+          </div>
+        </div>
+      </el-form-item>
+
       <el-form-item label="共享用户" v-if="privacyMode === 'shared'">
         <el-select
           v-model="form.sharedUserIds"
@@ -105,7 +121,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Lock, View, Hide, Share, User } from '@element-plus/icons-vue'
+import { Lock, View, Hide, Share, User, Link, InfoFilled } from '@element-plus/icons-vue'
 import { getUsers } from '@/api/users'
 
 const props = defineProps({
@@ -136,6 +152,7 @@ const form = ref({
   isPrivate: false,
   isPublic: true,
   allowShare: true,
+  enableShortLink: false,
   sharedUserIds: []
 })
 
@@ -172,7 +189,7 @@ const searchUsers = async (query) => {
     availableUsers.value = []
     return
   }
-  
+
   loadingUsers.value = true
   try {
     const response = await getUsers({ keyword: query })
@@ -194,9 +211,10 @@ watch(() => props.album, (newAlbum) => {
       isPrivate: newAlbum.isPrivate || false,
       isPublic: newAlbum.isPublic !== undefined ? newAlbum.isPublic : true,
       allowShare: newAlbum.allowShare !== undefined ? newAlbum.allowShare : true,
+      enableShortLink: newAlbum.enableShortLink || false,
       sharedUserIds: newAlbum.sharedUsers ? newAlbum.sharedUsers.split(',').map(id => parseInt(id)).filter(id => id) : []
     }
-    
+
     // 设置隐私模式
     if (newAlbum.isPrivate) {
       privacyMode.value = 'private'
@@ -213,6 +231,7 @@ watch(() => props.album, (newAlbum) => {
       isPrivate: false,
       isPublic: true,
       allowShare: true,
+      enableShortLink: false,
       sharedUserIds: []
     }
     privacyMode.value = 'public'
@@ -224,7 +243,7 @@ const handleSubmit = () => {
     ElMessage.warning('请输入相册名称')
     return
   }
-  
+
   // 准备提交数据
   const submitData = {
     name: form.value.name,
@@ -232,13 +251,14 @@ const handleSubmit = () => {
     isPrivate: form.value.isPrivate,
     isPublic: form.value.isPublic,
     allowShare: form.value.allowShare,
+    enableShortLink: form.value.enableShortLink,
     sharedUsers: form.value.sharedUserIds.join(',')
   }
-  
+
   if (props.isEdit) {
     submitData.id = form.value.id
   }
-  
+
   emit('submit', submitData)
 }
 
@@ -249,6 +269,7 @@ const handleClose = () => {
     isPrivate: false,
     isPublic: true,
     allowShare: true,
+    enableShortLink: false,
     sharedUserIds: []
   }
   privacyMode.value = 'public'

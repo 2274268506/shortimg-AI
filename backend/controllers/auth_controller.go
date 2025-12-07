@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"imagebed/config"
 	"imagebed/database"
 	"imagebed/models"
 	"imagebed/utils"
@@ -30,6 +31,13 @@ type AuthResponse struct {
 
 // Register 用户注册
 func Register(c *gin.Context) {
+	// 检查是否允许注册
+	cfg := config.GetConfig()
+	if !cfg.AllowRegistration {
+		c.JSON(http.StatusForbidden, gin.H{"error": "系统已关闭注册功能"})
+		return
+	}
+
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误: " + err.Error()})

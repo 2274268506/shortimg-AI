@@ -177,13 +177,75 @@ function _M.reload()
     })
 end
 
+-- 查询短链列表
+function _M.list()
+    local args = ngx.req.get_uri_args()
+    local page = tonumber(args.page) or 1
+    local limit = tonumber(args.limit) or 20
+    local service_type = args.service_type
+
+    -- 计算偏移量
+    local offset = (page - 1) * limit
+
+    -- 构建查询条件
+    local where_clause = ""
+    local params = {}
+
+    if service_type and service_type ~= "" then
+        where_clause = "WHERE service_type = ?"
+        table.insert(params, service_type)
+    end
+
+    -- 查询总数
+    local count_sql = "SELECT COUNT(*) as total FROM short_links " .. where_clause
+    local count_result, err = mysql_client.query(count_sql, params)
+
+    if err then
+        logger.error("查询短链总数失败: " .. err)
+        return respond_error("查询失败: " .. err, 500)
+    end
+
+    local total = (count_result and count_result[1] and count_result[1].total) or 0
+
+    -- 查询列表
+    local query_params = {}
+    for _, p in ipairs(params) do
+        table.insert(query_params, p)
+    end
+    table.insert(query_params, limit)
+    table.insert(query_params, offset)
+
+    local list_sql = [[
+        SELECT short_code, strategy, status, service_type,
+               created_at, updated_at, visit_count
+        FROM short_links
+    ]] .. where_clause .. " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+
+    local links, err = mysql_client.query(list_sql, query_params)
+
+    if err then
+        logger.error("查询短链列表失败: " .. err)
+        return respond_error("查询失败: " .. err, 500)
+    end
+
+    return respond_success({
+        links = links or {},
+        total = total,
+        page = page,
+        limit = limit,
+        total_pages = math.ceil(total / limit)
+    })
+end
+
 -- 路由处理
 function _M.handle()
     local uri = ngx.var.uri
     local method = ngx.var.request_method
 
     -- 短链 CRUD API
-    if uri == "/api/v1/links" and method == "POST" then
+    if uri == "/api/v1/links" and method == "GET" then
+        return _M.list()
+    elseif uri == "/api/v1/links" and method == "POST" then
         return _M.create()
     elseif uri:match("^/api/v1/links/([^/]+)$") and method == "GET" then
         return _M.get()

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>短链测试页面</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #10b981;
+      color: white;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .test-section {
+      margin: 30px 0;
+    }
+
+    .test-section h2 {
+      font-size: 20px;
+      color: #555;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+
+    .test-section h2::before {
+      content: "🔗";
+      margin-right: 10px;
+    }
+
+    .link-card {
+      background: white;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 10px 0;
+      transition: all 0.3s;
+    }
+
+    .link-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+
+    .link-info {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .link-label {
+      font-weight: bold;
+      color: #666;
+    }
+
+    .link-value {
+      color: #333;
+      word-break: break-all;
+    }
+
+    .link-value.code {
+      font-family: "Courier New", monospace;
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.3s;
+      font-weight: 500;
+      margin-right: 10px;
+    }
+
+    .btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+    }
+
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .warning strong {
+      color: #92400e;
+    }
+
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: "Courier New", monospace;
+      color: #e11d48;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🎯 短链服务测试页面</h1>
+    <span class="status">✓ 系统正常运行</span>
+
+    <div class="info-box">
+      <strong>✅ 问题已解决：</strong>
+      <p>PR_END_OF_FILE_ERROR 错误已修复。原因是CDN配置使用了不存在的HTTPS域名，现已修改为本地开发配置。</p>
+    </div>
+
+    <div class="test-section">
+      <h2>测试短链</h2>
+
+      <div class="link-card">
+        <div class="link-info">
+          <span class="link-label">短链码:</span>
+          <span class="link-value code">testbaidu123</span>
+
+          <span class="link-label">完整URL:</span>
+          <span class="link-value code">http://localhost/testbaidu123</span>
+
+          <span class="link-label">目标:</span>
+          <span class="link-value">https://www.baidu.com</span>
+
+          <span class="link-label">服务类型:</span>
+          <span class="link-value">general</span>
+
+          <span class="link-label">状态:</span>
+          <span class="link-value">✅ 正常工作</span>
+        </div>
+        <a href="/testbaidu123" class="btn" target="_blank">🚀 测试跳转</a>
+        <a href="/dashboard/" class="btn btn-secondary">📊 管理后台</a>
+      </div>
+    </div>
+
+    <div class="warning">
+      <strong>⚠️ 关于 test12digits 短链：</strong>
+      <p>该短链使用了 <code>cdn: "default"</code> + <code>path: "/image.jpg"</code> 配置，会跳转到
+        <code>http://localhost/image.jpg</code>（本地不存在此文件，会返回404）。</p>
+      <p><strong>建议</strong>：创建短链时使用完整URL（如 <code>https://www.example.com</code>）而不是CDN+路径的方式。</p>
+    </div>
+
+    <div class="test-section">
+      <h2>快速操作</h2>
+
+      <div class="link-card">
+        <h3 style="margin-bottom: 15px; color: #333;">📝 创建新短链</h3>
+        <p style="margin-bottom: 15px; color: #666;">
+          访问管理后台，点击"创建短链"按钮，填写以下信息：
+        </p>
+        <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
+          <li><strong>短链码</strong>: 12个字符（自动生成）</li>
+          <li><strong>服务类型</strong>: general / imagebed / cdn / redirect / api</li>
+          <li><strong>目标URL</strong>: 完整的URL地址（推荐）</li>
+          <li><strong>策略</strong>: 权重 / 轮询 / 最少连接</li>
+        </ul>
+        <div style="margin-top: 15px;">
+          <a href="/dashboard/" class="btn">前往管理后台</a>
+          <a href="/dashboard/SHORT_LINK_USAGE_GUIDE.md" class="btn btn-secondary" target="_blank">📖 使用指南</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>配置说明</h2>
+
+      <div class="link-card">
+        <h3 style="margin-bottom: 15px; color: #333;">🔧 当前环境配置</h3>
+        <div class="link-info">
+          <span class="link-label">环境:</span>
+          <span class="link-value">本地开发环境</span>
+
+          <span class="link-label">协议:</span>
+          <span class="link-value code">http</span>
+
+          <span class="link-label">域名:</span>
+          <span class="link-value code">localhost</span>
+
+          <span class="link-label">CDN配置:</span>
+          <span class="link-value">所有CDN域名指向 localhost</span>
+
+          <span class="link-label">配置文件:</span>
+          <span class="link-value code">.env</span>
+        </div>
+        <p style="margin-top: 15px; color: #666;">
+          <strong>注意：</strong>生产环境需要修改 <code>.env</code> 文件，配置真实的域名和HTTPS证书。
+        </p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>短链重定向服务 v1.0 | 基于 OpenResty + Lua + MySQL + Redis</p>
+      <p style="margin-top: 5px;">
+        <a href="/dashboard/" style="color: #667eea; text-decoration: none;">管理后台</a> ·
+        <a href="/api/health" style="color: #667eea; text-decoration: none;">健康检查</a> ·
+        <a href="SHORT_LINK_USAGE_GUIDE.md" style="color: #667eea; text-decoration: none;" target="_blank">使用文档</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // 页面加载完成后检查服务状态
+    window.addEventListener('load', async () => {
+      try {
+        const response = await fetch('/api/health');
+        if (response.ok) {
+          console.log('✓ 服务健康检查通过');
+        }
+      } catch (error) {
+        console.error('✗ 服务健康检查失败:', error);
+      }
+    });
+  </script>
+</body>
+
+</html>

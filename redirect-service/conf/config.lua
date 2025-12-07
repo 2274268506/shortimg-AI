@@ -16,6 +16,18 @@ _M.server.base_url = _M.server.protocol .. "://" .. _M.server.domain
 
 -- 目标服务器配置（CDN服务器域名）
 _M.cdn_servers = {
+    -- 私有网络（PRIVATE） - 本地开发
+    private = {
+        domain = os.getenv("CDN_PRIVATE_DOMAIN") or "localhost",
+        protocol = os.getenv("CDN_PRIVATE_PROTOCOL") or "http",
+        port = tonumber(os.getenv("CDN_PRIVATE_PORT")) or nil,
+    },
+    -- 公网（PUBLIC） - 生产环境
+    public = {
+        domain = os.getenv("CDN_PUBLIC_DOMAIN") or "dxy.oxvxo.net",
+        protocol = os.getenv("CDN_PUBLIC_PROTOCOL") or "https",
+        port = tonumber(os.getenv("CDN_PUBLIC_PORT")) or 18443,
+    },
     -- 北方电信 CDN
     north_telecom = {
         domain = os.getenv("CDN_NORTH_TELECOM_DOMAIN") or "cdn-north.example.com",
@@ -38,15 +50,57 @@ _M.cdn_servers = {
     },
     -- TC-GO 图床备用服务器
     tc_go_backup = {
-        domain = os.getenv("TC_GO_BACKUP_DOMAIN") or "imagebed-backup.example.com",
-        protocol = os.getenv("TC_GO_BACKUP_PROTOCOL") or "https",
+        domain = os.getenv("CDN_BACKUP_DOMAIN") or "imagebed-backup.example.com",
+        protocol = os.getenv("CDN_BACKUP_PROTOCOL") or "https",
     },
     -- 降级服务器
     fallback = {
         domain = os.getenv("CDN_FALLBACK_DOMAIN") or "cdn-fallback.example.com",
         protocol = os.getenv("CDN_FALLBACK_PROTOCOL") or "https",
     },
+    -- 默认服务器（指向fallback）
+    default = {
+        domain = os.getenv("CDN_FALLBACK_DOMAIN") or "cdn-fallback.example.com",
+        protocol = os.getenv("CDN_FALLBACK_PROTOCOL") or "https",
+    },
 }
+
+-- 判断是否为私有IP
+function _M.is_private_ip(ip)
+    if not ip then
+        return false
+    end
+
+    -- IPv4私有地址段
+    -- 10.0.0.0/8
+    if ip:match("^10%.") then
+        return true
+    end
+    -- 172.16.0.0/12
+    if ip:match("^172%.1[6-9]%.") or ip:match("^172%.2[0-9]%.") or ip:match("^172%.3[0-1]%.") then
+        return true
+    end
+    -- 192.168.0.0/16
+    if ip:match("^192%.168%.") then
+        return true
+    end
+    -- 127.0.0.0/8 (localhost)
+    if ip:match("^127%.") then
+        return true
+    end
+
+    return false
+end
+
+-- GeoIP分流选择CDN
+function _M.select_cdn_by_geo(client_ip)
+    -- 判断是否为私有IP
+    if _M.is_private_ip(client_ip) then
+        return "private"
+    else
+        return "public"
+    end
+end
 
 -- 生成完整 CDN URL 的辅助函数
 function _M.get_cdn_url(cdn_name, path)
@@ -60,7 +114,14 @@ function _M.get_cdn_url(cdn_name, path)
         path = "/" .. path
     end
 
-    return cdn.protocol .. "://" .. cdn.domain .. path
+    -- 构建URL，处理端口
+    local url = cdn.protocol .. "://" .. cdn.domain
+    if cdn.port and cdn.port ~= 80 and cdn.port ~= 443 then
+        url = url .. ":" .. cdn.port
+    end
+    url = url .. path
+
+    return url
 end
 
 -- Redis 配置

@@ -1,0 +1,398 @@
+# ========================================
+# 🎯 短链服务分流配置
+# ========================================
+#
+# 📋 配置说明:
+#   1. CDN节点定义 - 配置所有可用的CDN节点
+#   2. 分流规则 - 定义流量分配规则（按优先级匹配）
+#   3. 默认路由 - 无规则匹配时的降级策略
+#
+# ⚡ 规则匹配逻辑:
+#   - 按 priority 从小到大依次检查规则
+#   - 规则中的所有 conditions 必须全部满足（AND逻辑）
+#   - 匹配成功后立即返回，不再检查后续规则
+#   - 无规则匹配时使用 default_routing 配置
+#
+# 🔄 热更新:
+#   修改此文件后，配置会在下次请求时自动生效
+#   无需重启服务（缓存默认5分钟）
+#
+# 📖 详细文档:
+#   - 快速入门: ROUTING_QUICK_START.md
+#   - 完整指南: ROUTING_CONFIG_GUIDE.md
+#   - 配置验证: lua scripts/validate_routing.lua
+# ========================================
+
+# ========================================
+# 📡 第一部分: CDN节点定义
+# ========================================
+# 说明:
+#   - id: 节点唯一标识（在规则中引用）
+#   - name: 节点显示名称（用于日志）
+#   - domain_env/protocol_env/port_env: 从 .env 读取的环境变量名
+#   - default_*: 环境变量未设置时的默认值
+#
+# 环境变量配置位置: .env 文件
+
+cdn_nodes:
+  # 私有网络（内网/开发环境）
+  - id: private
+    name: 私有网络CDN
+    domain_env: CDN_PRIVATE_DOMAIN
+    protocol_env: CDN_PRIVATE_PROTOCOL
+    port_env: CDN_PRIVATE_PORT
+    default_domain: localhost
+    default_protocol: http
+
+  # 联通CDN（中国联通用户）
+  - id: unicom
+    name: 联通CDN
+    domain_env: CDN_UNICOM_DOMAIN
+    protocol_env: CDN_UNICOM_PROTOCOL
+    port_env: CDN_UNICOM_PORT
+    default_domain: cdn-unicom.example.com
+    default_protocol: https
+
+  # 移动CDN（中国移动用户）
+  - id: mobile
+    name: 移动CDN
+    domain_env: CDN_MOBILE_DOMAIN
+    protocol_env: CDN_MOBILE_PROTOCOL
+    port_env: CDN_MOBILE_PORT
+    default_domain: cdn-mobile.example.com
+    default_protocol: https
+
+  # 电信CDN（中国电信用户）
+  - id: telecom
+    name: 电信CDN
+    domain_env: CDN_TELECOM_DOMAIN
+    protocol_env: CDN_TELECOM_PROTOCOL
+    port_env: CDN_TELECOM_PORT
+    default_domain: cdn-telecom.example.com
+    default_protocol: https
+
+  # 国内CDN（国内通用节点）
+  - id: china
+    name: 国内CDN
+    domain_env: CDN_CHINA_DOMAIN
+    protocol_env: CDN_CHINA_PROTOCOL
+    port_env: CDN_CHINA_PORT
+    default_domain: cdn-china.example.com
+    default_protocol: https
+
+  # 国外CDN（海外用户）
+  - id: overseas
+    name: 国外CDN
+    domain_env: CDN_OVERSEAS_DOMAIN
+    protocol_env: CDN_OVERSEAS_PROTOCOL
+    port_env: CDN_OVERSEAS_PORT
+    default_domain: cdn-overseas.example.com
+    default_protocol: https
+
+  # 备用CDN（备份节点）
+  - id: backup
+    name: 备用CDN
+    domain_env: CDN_BACKUP_DOMAIN
+    protocol_env: CDN_BACKUP_PROTOCOL
+    port_env: CDN_BACKUP_PORT
+    default_domain: cdn-backup.example.com
+    default_protocol: https
+
+  # 默认CDN（降级/兜底节点）
+  - id: default
+    name: 默认CDN
+    domain_env: CDN_DEFAULT_DOMAIN
+    protocol_env: CDN_DEFAULT_PROTOCOL
+    port_env: CDN_DEFAULT_PORT
+    default_domain: cdn.example.com
+    default_protocol: https
+
+# ========================================
+# 📋 第二部分: 分流规则配置
+# ========================================
+# 说明:
+#   - name: 规则名称（便于识别，建议命名清晰）
+#   - priority: 优先级（1-999，数字越小优先级越高）
+#   - enabled: 是否启用（true/false，可快速启用/禁用规则）
+#   - conditions: 匹配条件列表（所有条件必须同时满足）
+#   - target: 目标CDN节点ID（必须在 cdn_nodes 中定义）
+#
+# 💡 优先级建议:
+#   1-10:   关键业务规则（VIP用户、测试流量）
+#   11-50:  地理位置规则（地域、运营商）
+#   51-100: 功能性规则（路径、时间段）
+#   101+:   实验性规则（A/B测试、灰度）
+#
+# 📝 条件类型支持:
+#   ip_range     - IP地址段（CIDR格式，如 192.168.0.0/16）
+#   province     - 省份名称列表
+#   isp          - 运营商名称列表
+#   country      - 国家代码（如 CN）
+#   asn          - 自治系统号列表
+#   path_prefix  - URL路径前缀列表
+#   time_range   - 时间范围（start_hour, end_hour）
+#   percentage   - 百分比（0-100）
+#   header       - HTTP请求头（name, value）
+#   query_param  - URL参数（name, value）
+
+routing_rules:
+  # ========================================
+  # 规则1: 内网IP使用私有CDN
+  # 优先级: 10（最高）
+  # 场景: 开发环境、办公网络
+  # ========================================
+  - name: 内网IP路由
+    priority: 10
+    enabled: true
+    conditions:
+      - type: ip_range
+        ranges:
+          - 10.0.0.0/8          # A类私有网络
+          - 172.16.0.0/12       # B类私有网络
+          - 192.168.0.0/16      # C类私有网络
+          - 127.0.0.0/8         # 本地回环
+    target: private
+
+  # ========================================
+  # 规则2: 电信用户使用电信CDN
+  # 优先级: 20
+  # 场景: 优化电信用户访问速度
+  # ========================================
+  - name: 电信用户
+    priority: 20
+    enabled: true
+    conditions:
+      - type: isp
+        values:
+          - China Telecom
+          - ChinaNet
+          - 电信
+    target: telecom
+
+  # ========================================
+  # 规则3: 联通用户使用联通CDN
+  # 优先级: 30
+  # 场景: 优化联通用户访问速度
+  # ========================================
+  - name: 联通用户
+    priority: 30
+    enabled: true
+    conditions:
+      - type: isp
+        values:
+          - China Unicom
+          - 联通
+    target: unicom
+
+  # ========================================
+  # 规则4: 移动用户使用移动CDN
+  # 优先级: 40
+  # 场景: 优化移动用户访问速度
+  # ========================================
+  - name: 移动用户
+    priority: 40
+    enabled: true
+    conditions:
+      - type: isp
+        values:
+          - China Mobile
+          - 移动
+    target: mobile
+
+  # ========================================
+  # 规则5: 海外IP使用国外CDN
+  # 优先级: 50
+  # 场景: 国际用户访问加速
+  # ========================================
+  - name: 海外访问
+    priority: 50
+    enabled: true
+    conditions:
+      - type: country
+        operator: not_equals
+        value: CN
+    target: overseas
+
+  # ========================================
+  # 规则6: 国内其他用户使用国内CDN
+  # 优先级: 60
+  # 场景: 国内非三大运营商用户
+  # ========================================
+  - name: 国内通用
+    priority: 60
+    enabled: true
+    conditions:
+      - type: country
+        value: CN
+    target: china
+
+  # ========================================
+  # 规则7: 时间段路由（示例：夜间使用备份服务器）
+  # ========================================
+  - name: 夜间备份路由
+    priority: 70
+    enabled: false  # 默认禁用
+    conditions:
+  # ========================================
+  # 高级规则示例（默认禁用，按需启用）
+  # ========================================
+
+  # 规则: 夜间维护窗口使用备份CDN
+  # 优先级: 70
+  # 场景: 主CDN夜间维护时的流量切换
+  - name: 夜间备份路由
+    priority: 70
+    enabled: false  # 需要时启用
+    conditions:
+      - type: time_range
+        start_hour: 2    # 凌晨2点
+        end_hour: 6      # 早上6点
+    target: backup
+
+  # 规则: A/B测试分流
+  # 优先级: 80
+  # 场景: 新CDN灰度发布、性能对比测试
+  - name: AB测试分流
+    priority: 80
+    enabled: false  # 需要时启用
+    conditions:
+      - type: percentage
+        value: 20  # 20%的流量到新CDN
+    target: backup
+
+  # 规则: 客户端指定CDN
+  # 优先级: 90
+  # 场景: 允许客户端通过Header指定CDN
+  - name: 自定义Header路由
+    priority: 90
+    enabled: false  # 需要时启用
+    conditions:
+      - type: header
+        name: X-CDN-Prefer
+        value: backup
+    target: backup
+
+  # 规则: URL参数动态路由
+  # 优先级: 100
+  # 场景: 调试、测试特定CDN
+  # 使用: http://short.domain.com/abc?cdn=overseas
+  - name: URL参数路由
+    priority: 100
+    enabled: false  # 需要时启用
+    conditions:
+      - type: query_param
+        name: cdn
+        value: overseas
+    target: overseas
+
+# ========================================
+# 🔄 第三部分: 默认路由和降级策略
+# ========================================
+# 说明:
+#   - target: 无规则匹配时使用的默认CDN
+#   - fallback_chain: CDN故障时的降级顺序
+#
+# 降级逻辑:
+#   1. 尝试使用规则匹配的目标CDN
+#   2. 如果目标CDN不可用，按降级链顺序尝试
+#   3. 所有CDN都不可用时返回错误
+
+default_routing:
+  # 默认目标CDN（推荐使用最稳定的节点）
+  target: default
+
+  # 降级链（从左到右依次尝试）
+  fallback_chain:
+    - china         # 首选: 国内CDN
+    - backup        # 次选: 备用CDN
+    - default       # 兜底: 默认CDN
+
+# ========================================
+# ⚙️ 第四部分: 高级配置
+# ========================================
+# 说明:
+#   性能优化、日志控制、健康检查等高级选项
+
+advanced:
+  # 规则缓存（提高性能）
+  enable_rule_cache: true
+  cache_ttl: 300  # 缓存时间（秒），默认5分钟
+
+  # 路由日志（调试用）
+  # 生产环境建议关闭以提升性能
+  enable_routing_log: false
+
+  # 健康检查
+  enable_health_check: true
+  health_check_interval: 30  # 检查间隔（秒）
+
+  # 失败重试
+  max_retries: 3      # 最大重试次数
+  retry_delay: 1      # 重试延迟（秒）
+
+# ========================================
+# 📝 配置示例和最佳实践
+# ========================================
+#
+# 示例1: 简单内外网分流
+# ----------------------------
+# routing_rules:
+#   - name: 内网用户
+#     priority: 10
+#     enabled: true
+#     conditions:
+#       - type: ip_range
+#         ranges: [192.168.0.0/16]
+#     target: private
+#
+#   - name: 外网用户（默认）
+#     priority: 100
+#     enabled: true
+#     conditions: []
+#     target: public
+#
+# 示例2: 电信联通分流
+# ----------------------------
+# routing_rules:
+#   - name: 电信用户
+#     priority: 20
+#     enabled: true
+#     conditions:
+#       - type: isp
+#         values: [China Telecom]
+#     target: telecom_cdn
+#
+#   - name: 联通用户
+#     priority: 30
+#     enabled: true
+#     conditions:
+#       - type: isp
+#         values: [China Unicom]
+#     target: unicom_cdn
+#
+# 示例3: 复杂组合条件
+# ----------------------------
+# routing_rules:
+#   - name: 北京电信VIP用户
+#     priority: 5
+#     enabled: true
+#     conditions:
+#       - type: province
+#         values: [北京]
+#       - type: isp
+#         values: [China Telecom]
+#       - type: header
+#         name: X-User-Level
+#         value: VIP
+#     target: vip_cdn
+#
+# 💡 最佳实践:
+#   1. 优先级设置: 关键规则1-10，地域规则11-50，功能规则51-100
+#   2. 规则命名: 使用清晰描述性的名称，便于维护
+#   3. 条件组合: 多个条件是AND关系，都要满足才匹配
+#   4. 测试规则: 使用 enabled:false 暂时禁用，而不是删除
+#   5. 降级策略: 配置多个备选CDN，确保高可用
+#   6. 性能优化: 生产环境关闭路由日志，启用缓存
+#   7. 灰度发布: 使用 percentage 条件逐步切换CDN
+#
+# ========================================

@@ -73,7 +73,7 @@ function _M.get_link(short_code)
     local sql = string.format([[
         SELECT
             id, short_code, targets, strategy,
-            security_config, status,
+            security_config, service_type, status,
             created_at, updated_at, expires_at
         FROM short_links
         WHERE short_code = %s
@@ -120,13 +120,14 @@ function _M.create_link(data)
 
     local sql = string.format([[
         INSERT INTO short_links
-        (short_code, targets, strategy, security_config, status, expires_at)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        (short_code, targets, strategy, security_config, service_type, status, expires_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
     ]],
         escape(data.short_code),
         escape(targets_json),
         escape(data.strategy or "weight"),
         escape(security_json),
+        escape(data.service_type or "general"),
         escape(data.status or "active"),
         data.expires_at and escape(data.expires_at) or "NULL"
     )
@@ -160,6 +161,9 @@ function _M.update_link(short_code, data)
     end
     if data.security_config then
         table.insert(updates, "security_config = " .. escape(cjson.encode(data.security_config)))
+    end
+    if data.service_type then
+        table.insert(updates, "service_type = " .. escape(data.service_type))
     end
     if data.status then
         table.insert(updates, "status = " .. escape(data.status))

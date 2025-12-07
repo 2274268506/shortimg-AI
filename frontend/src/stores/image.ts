@@ -112,7 +112,7 @@ export const useImageStore = defineStore('image', () => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('albumId', albumId.toString())
-    
+
     try {
       const res = await api.uploadImage(formData)
       await loadImages(albumId)
@@ -124,13 +124,18 @@ export const useImageStore = defineStore('image', () => {
   }
 
   // 批量上传图片
-  const batchUploadImages = async (files: File[], albumId: number) => {
+  const batchUploadImages = async (files: File[], albumId: number, enableShortLink?: boolean) => {
     const formData = new FormData()
     files.forEach((file: File) => {
       formData.append('files', file)
     })
     formData.append('albumId', albumId.toString())
-    
+
+    // 添加短链配置参数
+    if (enableShortLink !== undefined) {
+      formData.append('enableShortLink', enableShortLink.toString())
+    }
+
     try {
       const res = await api.batchUpload(formData)
       await loadImages(albumId)

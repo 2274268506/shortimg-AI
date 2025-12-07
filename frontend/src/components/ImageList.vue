@@ -9,7 +9,11 @@
         />
       </template>
     </el-table-column>
-    <el-table-column prop="fileName" label="文件名" min-width="200" />
+    <el-table-column label="文件名" min-width="200">
+      <template #default="{ row }">
+        <span :title="row.fileName">{{ row.originalName || row.fileName }}</span>
+      </template>
+    </el-table-column>
     <el-table-column label="尺寸" width="120">
       <template #default="{ row }">
         {{ row.width }} × {{ row.height }}

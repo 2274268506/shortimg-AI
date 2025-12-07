@@ -9,14 +9,19 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./conf/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
-      - ./conf/upstream.conf:/usr/local/openresty/nginx/conf/upstream.conf:ro
-      - ./conf/config.lua:/usr/local/openresty/nginx/conf/config.lua:ro
-      - ./conf/https.conf:/usr/local/openresty/nginx/conf/https.conf:ro
-      - ./lua:/usr/local/openresty/nginx/lua:ro
-      - ./lib:/usr/local/openresty/site/lualib/resty:ro
+      # 开发模式：配置文件可写，方便调试
+      - ./conf/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+      - ./conf/upstream.conf:/usr/local/openresty/nginx/conf/upstream.conf
+      - ./conf/config.lua:/usr/local/openresty/nginx/conf/config.lua
+      - ./conf/https.conf:/usr/local/openresty/nginx/conf/https.conf
+      - ./lua:/usr/local/openresty/nginx/lua
+      - ./lib:/usr/local/openresty/site/lualib/resty
+      - ./lib/prometheus.lua:/usr/local/openresty/site/lualib/prometheus.lua
+      - ./lib/prometheus_keys.lua:/usr/local/openresty/site/lualib/prometheus_keys.lua
+      - ./lib/prometheus_resty_counter.lua:/usr/local/openresty/site/lualib/prometheus_resty_counter.lua
+      - ./html:/usr/local/openresty/nginx/html
       - ./logs:/usr/local/openresty/nginx/logs
-      - ./geoip:/usr/local/openresty/nginx/geoip:ro
+      - ./geoip:/usr/local/openresty/nginx/geoip
       # SSL 证书（如果启用 HTTPS，请取消注释并配置证书路径）
       # - ./ssl/cert.pem:/etc/nginx/ssl/cert.pem:ro
       # - ./ssl/key.pem:/etc/nginx/ssl/key.pem:ro
@@ -35,6 +40,15 @@ services:
       # 重定向服务域名配置（可在 .env 文件中修改）
       - REDIRECT_DOMAIN=${REDIRECT_DOMAIN:-short.example.com}
       - REDIRECT_PROTOCOL=${REDIRECT_PROTOCOL:-https}
+
+      # CDN 分流配置
+      - CDN_ROUTING_MODE=${CDN_ROUTING_MODE:-auto}
+      - CDN_PRIVATE_DOMAIN=${CDN_PRIVATE_DOMAIN:-localhost}
+      - CDN_PRIVATE_PORT=${CDN_PRIVATE_PORT:-}
+      - CDN_PRIVATE_PROTOCOL=${CDN_PRIVATE_PROTOCOL:-http}
+      - CDN_PUBLIC_DOMAIN=${CDN_PUBLIC_DOMAIN:-dxy.oxvxo.net}
+      - CDN_PUBLIC_PORT=${CDN_PUBLIC_PORT:-18443}
+      - CDN_PUBLIC_PROTOCOL=${CDN_PUBLIC_PROTOCOL:-https}
 
       # CDN 服务器域名配置（可在 .env 文件中修改）
       - CDN_NORTH_TELECOM_DOMAIN=${CDN_NORTH_TELECOM_DOMAIN:-cdn-north.example.com}

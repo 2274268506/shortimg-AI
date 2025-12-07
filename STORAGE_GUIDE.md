@@ -6,9 +6,11 @@ TC-GO 图床系统现已支持多种存储类型,包括:
 
 1. **本地存储** (local) - 默认,无需额外配置
 2. **阿里云 OSS** (oss) - 适合国内用户
-3. **腾讯云 COS** (cos) - 适合国内用户  
+3. **腾讯云 COS** (cos) - 适合国内用户
 4. **七牛云** (qiniu) - 适合国内用户
 5. **S3/MinIO** (s3) - 适合国际用户或自建对象存储
+6. **WebDAV** (webdav) - 支持坚果云、NextCloud、ownCloud等 🆕
+7. **SFTP** (sftp) - 适合VPS、云服务器部署 🆕
 
 ## 架构设计
 
@@ -38,7 +40,9 @@ backend/
     ├── oss.go        # 阿里云OSS实现
     ├── cos.go        # 腾讯云COS实现
     ├── qiniu.go      # 七牛云实现
-    └── s3.go         # S3/MinIO实现
+    ├── s3.go         # S3/MinIO实现
+    ├── webdav.go     # WebDAV实现 🆕
+    └── sftp.go       # SFTP实现 🆕
 ```
 
 ## 使用方法
@@ -193,6 +197,101 @@ go get github.com/minio/minio-go/v7
 - ✅ 国际化支持好
 - ❌ 国内访问AWS S3较慢
 
+### 6. WebDAV 🆕
+
+**.env 配置 (坚果云示例):**
+
+```env
+STORAGE_TYPE=webdav
+WEBDAV_URL=https://dav.jianguoyun.com/dav/
+WEBDAV_USERNAME=your_email@example.com
+WEBDAV_PASSWORD=your_app_password
+WEBDAV_BASE_PATH=/imagebed/
+WEBDAV_BASE_URL=
+```
+
+**NextCloud 配置示例:**
+
+```env
+STORAGE_TYPE=webdav
+WEBDAV_URL=https://nextcloud.example.com/remote.php/dav/files/username/
+WEBDAV_USERNAME=username
+WEBDAV_PASSWORD=your_password
+WEBDAV_BASE_PATH=/images/
+WEBDAV_BASE_URL=https://nextcloud.example.com/s/xxxxx
+```
+
+**安装依赖:**
+
+```bash
+go get github.com/studio-b12/gowebdav
+```
+
+**特点:**
+- ✅ 支持坚果云、NextCloud、ownCloud等
+- ✅ 无需云服务商账号（坚果云免费额度充足）
+- ✅ 配置简单，适合个人使用
+- ⚠️ 坚果云需要使用**应用密码**（非登录密码）
+- ❌ 性能受WebDAV服务商限制
+
+**坚果云应用密码获取:**
+1. 登录坚果云网页版：https://www.jianguoyun.com/
+2. 账户信息 → 安全选项 → 第三方应用管理
+3. 添加应用 → 输入名称 → 生成密码
+4. 复制密码填入 `WEBDAV_PASSWORD`
+
+### 7. SFTP 🆕
+
+**.env 配置 (密码认证):**
+
+```env
+STORAGE_TYPE=sftp
+SFTP_HOST=your-server.com
+SFTP_PORT=22
+SFTP_USERNAME=root
+SFTP_PASSWORD=your_password
+SFTP_BASE_PATH=/var/www/images/
+SFTP_BASE_URL=https://yourdomain.com/images/
+```
+
+**.env 配置 (密钥认证，推荐):**
+
+```env
+STORAGE_TYPE=sftp
+SFTP_HOST=123.45.67.89
+SFTP_PORT=22
+SFTP_USERNAME=imagebed
+SFTP_PRIVATE_KEY=/root/.ssh/id_ed25519
+SFTP_PASSWORD=
+SFTP_BASE_PATH=/var/www/html/uploads/
+SFTP_BASE_URL=https://img.example.com/uploads/
+```
+
+**安装依赖:**
+
+```bash
+go get github.com/pkg/sftp
+go get golang.org/x/crypto/ssh
+```
+
+**特点:**
+- ✅ 适合VPS、云服务器部署
+- ✅ SSH加密传输，安全性高
+- ✅ 支持密码和密钥两种认证
+- ✅ 完全掌控存储，无第三方限制
+- ❌ 需要自行管理服务器
+- ❌ 配置相对复杂
+
+**生成SSH密钥（推荐）:**
+
+```bash
+# 生成ED25519密钥（更安全）
+ssh-keygen -t ed25519 -C "imagebed@yourdomain.com"
+
+# 复制公钥到服务器
+ssh-copy-id -i ~/.ssh/id_ed25519.pub user@your-server.com
+```
+
 ## 配置验证
 
 系统启动时会自动验证存储配置是否正确:
@@ -254,16 +353,33 @@ url := stor.GetURL("album_1/image.jpg")
    - 不要将密钥提交到版本控制系统
    - 使用 `.env` 文件并加入 `.gitignore`
    - 生产环境使用密钥管理服务
+   - **SFTP:** 使用密钥认证代替密码
+   - **WebDAV:** 坚果云使用应用密码，定期更换
 
 2. **访问控制:**
    - 配置Bucket访问策略
    - 启用防盗链
    - 设置合理的CORS策略
+   - **SFTP:** 禁用root登录，使用普通用户+sudo
+   - **SFTP:** 修改默认SSH端口（非22）
 
 3. **成本控制:**
    - 设置流量限制
    - 启用生命周期管理
    - 监控存储使用量
+   - **坚果云:** 免费版有流量限制，注意监控
+
+4. **传输安全:**
+   - 云存储使用HTTPS传输
+   - **SFTP:** 已内置SSH加密
+   - **WebDAV:** 确保使用HTTPS协议（坚果云默认）
+
+5. **SSH安全最佳实践（SFTP）:**
+   - 优先使用ED25519或RSA 4096位密钥
+   - 配置防火墙，限制SSH访问IP
+   - 启用fail2ban防暴力破解
+   - 定期更新系统和SSH服务
+   - 私钥文件权限设为600: `chmod 600 ~/.ssh/id_rsa`
 
 ## 故障排查
 
@@ -316,12 +432,50 @@ go mod tidy
 - 检查Bucket策略是否允许上传
 - 检查IAM权限配置
 
+### 5. WebDAV认证失败
+
+**错误:**
+```
+连接WebDAV服务器失败: 401 Unauthorized
+```
+
+**解决 (坚果云):**
+- ⚠️ 坚果云必须使用**应用密码**，不是登录密码
+- 获取应用密码：坚果云网页版 → 账户信息 → 安全选项 → 添加应用
+- 用户名应为邮箱地址
+
+### 6. SFTP连接超时
+
+**错误:**
+```
+连接SSH服务器失败: connection timeout
+```
+
+**解决:**
+- 检查服务器IP和端口是否正确
+- 确认防火墙已开放SSH端口
+- 尝试使用 `ssh` 命令测试连接
+
+### 7. SSH密钥认证失败
+
+**错误:**
+```
+解析SSH私钥失败: cannot decode encrypted private key
+```
+
+**解决:**
+- 确认私钥文件路径正确
+- 检查私钥文件权限（应为600）
+- 如果私钥有密码，暂不支持，请生成无密码私钥
+- 确认公钥已添加到服务器 `~/.ssh/authorized_keys`
+
 ## 性能优化
 
 1. **启用CDN:** 所有云存储都支持CDN加速
 2. **压缩传输:** 启用gzip压缩
 3. **并发上传:** 使用分片上传处理大文件
 4. **缓存策略:** 设置合理的Cache-Control头
+5. **SFTP优化:** 使用密钥认证代替密码，减少延迟
 
 ## 未来扩展
 
@@ -338,6 +492,9 @@ go mod tidy
 
 - [阿里云OSS文档](https://help.aliyun.com/product/31815.html)
 - [腾讯云COS文档](https://cloud.tencent.com/document/product/436)
+- [七牛云文档](https://developer.qiniu.com/kodo)
+- [坚果云WebDAV](https://help.jianguoyun.com/?p=2064)
+- [SFTP协议说明](https://datatracker.ietf.org/doc/html/draft-ietf-secsh-filexfer-02)
 - [七牛云对象存储文档](https://developer.qiniu.com/kodo)
 - [AWS S3文档](https://docs.aws.amazon.com/s3/)
 - [MinIO文档](https://min.io/docs/minio/linux/index.html)

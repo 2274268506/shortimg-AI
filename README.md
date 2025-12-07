@@ -41,10 +41,15 @@
 
 ### 🔧 技术特性
 - **RESTful API** - 标准的 REST 接口设计
-- **SQLite 数据库** - 轻量级数据存储
+- **多数据库支持** - SQLite / PostgreSQL / MySQL 🆕
+- **多存储类型** - 本地 / OSS / COS / 七牛云 / S3 / WebDAV / SFTP 🆕
+- **短链服务集成** - 支持生成短链接快速分享
+- **GeoIP智能路由** - 自动选择最优CDN节点 🆕
 - **跨域支持** - 完善的 CORS 配置
 - **文件验证** - 类型和大小限制保护
 - **图片优化** - 自动生成缩略图提升性能
+- **用户认证** - JWT token 认证机制
+- **注册控制** - 支持关闭注册功能 🆕
 
 ## 🛠️ 技术栈
 
@@ -162,9 +167,25 @@ npm run dev
 
 可以通过环境变量配置：
 
+#### 基础配置
 - `SERVER_PORT` - 服务器端口（默认：8080）
 - `UPLOAD_PATH` - 上传文件存储路径（默认：./uploads）
 - `DATABASE_PATH` - 数据库文件路径（默认：./data/imagebed.db）
+
+#### 短链服务配置
+- `SHORT_LINK_ENABLED` - 是否启用短链功能（默认：false）
+- `SHORT_LINK_BASE_URL` - 短链服务地址（例如：http://localhost 或 https://short.example.com）
+- `SHORT_LINK_EXPIRE` - 短链默认过期时间（秒），0表示永不过期
+
+**示例**：启用短链服务
+```bash
+# 在 backend/.env 文件中添加：
+SHORT_LINK_ENABLED=true
+SHORT_LINK_BASE_URL=http://localhost
+SHORT_LINK_EXPIRE=0
+```
+
+详细配置说明请查看 `backend/.env.example` 文件。
 
 ### 前端配置
 
@@ -206,11 +227,11 @@ export default defineConfig({
    - 鼠标悬停在图片上显示操作按钮
    - 支持预览、复制链接、下载、删除操作
    - 可以移动图片到其他相册
-   
+
 5. **搜索功能**
    - 在搜索框输入关键词搜索图片
    - 支持按文件名模糊匹配
-   
+
 6. **查看统计**
    - 顶部统计面板显示当前相册信息
    - 包括图片总数、总大小等数据

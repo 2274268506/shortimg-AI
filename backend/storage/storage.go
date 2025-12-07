@@ -3,17 +3,20 @@ package storage
 import (
 	"io"
 	"mime/multipart"
+	"strconv"
 )
 
 // StorageType 存储类型
 type StorageType string
 
 const (
-	StorageTypeLocal StorageType = "local" // 本地存储
-	StorageTypeOSS   StorageType = "oss"   // 阿里云 OSS
-	StorageTypeCOS   StorageType = "cos"   // 腾讯云 COS
-	StorageTypeQiniu StorageType = "qiniu" // 七牛云
-	StorageTypeS3    StorageType = "s3"    // AWS S3 / MinIO
+	StorageTypeLocal  StorageType = "local"  // 本地存储
+	StorageTypeOSS    StorageType = "oss"    // 阿里云 OSS
+	StorageTypeCOS    StorageType = "cos"    // 腾讯云 COS
+	StorageTypeQiniu  StorageType = "qiniu"  // 七牛云
+	StorageTypeS3     StorageType = "s3"     // AWS S3 / MinIO
+	StorageTypeWebDAV StorageType = "webdav" // WebDAV
+	StorageTypeSFTP   StorageType = "sftp"   // SFTP
 )
 
 // Storage 存储接口
@@ -85,6 +88,22 @@ type Config struct {
 	S3Region          string `json:"s3Region"`
 	S3BasePath        string `json:"s3BasePath"`
 	S3UseSSL          bool   `json:"s3UseSSL"` // 是否使用HTTPS
+
+	// WebDAV配置
+	WebDAVURL      string `json:"webdavUrl"`      // WebDAV服务器地址
+	WebDAVUsername string `json:"webdavUsername"` // 用户名
+	WebDAVPassword string `json:"webdavPassword"` // 密码
+	WebDAVBasePath string `json:"webdavBasePath"` // 服务器上的基础路径
+	WebDAVBaseURL  string `json:"webdavBaseUrl"`  // 访问基础URL
+
+	// SFTP配置
+	SFTPHost       string `json:"sftpHost"`       // SFTP服务器地址
+	SFTPPort       int    `json:"sftpPort"`       // 端口(默认22)
+	SFTPUsername   string `json:"sftpUsername"`   // 用户名
+	SFTPPassword   string `json:"sftpPassword"`   // 密码
+	SFTPPrivateKey string `json:"sftpPrivateKey"` // 私钥路径
+	SFTPBasePath   string `json:"sftpBasePath"`   // 服务器上的基础路径
+	SFTPBaseURL    string `json:"sftpBaseUrl"`    // 访问基础URL
 }
 
 var globalStorage Storage
@@ -104,6 +123,10 @@ func InitStorage(cfg *Config) error {
 		globalStorage, err = NewQiniuStorage(cfg)
 	case StorageTypeS3:
 		globalStorage, err = NewS3Storage(cfg)
+	case StorageTypeWebDAV:
+		globalStorage, err = NewWebDAVStorage(cfg)
+	case StorageTypeSFTP:
+		globalStorage, err = NewSFTPStorage(cfg)
 	default:
 		// 默认使用本地存储
 		globalStorage, err = NewLocalStorage(cfg)
@@ -141,6 +164,18 @@ func InitStorageFromMap(configMap map[string]interface{}) error {
 		S3Region:           getStringFromMap(configMap, "S3Region", ""),
 		S3BasePath:         getStringFromMap(configMap, "S3BasePath", ""),
 		S3UseSSL:           getBoolFromMap(configMap, "S3UseSSL", true),
+		WebDAVURL:          getStringFromMap(configMap, "WebDAVURL", ""),
+		WebDAVUsername:     getStringFromMap(configMap, "WebDAVUsername", ""),
+		WebDAVPassword:     getStringFromMap(configMap, "WebDAVPassword", ""),
+		WebDAVBasePath:     getStringFromMap(configMap, "WebDAVBasePath", ""),
+		WebDAVBaseURL:      getStringFromMap(configMap, "WebDAVBaseURL", ""),
+		SFTPHost:           getStringFromMap(configMap, "SFTPHost", ""),
+		SFTPPort:           getIntFromMap(configMap, "SFTPPort", 22),
+		SFTPUsername:       getStringFromMap(configMap, "SFTPUsername", ""),
+		SFTPPassword:       getStringFromMap(configMap, "SFTPPassword", ""),
+		SFTPPrivateKey:     getStringFromMap(configMap, "SFTPPrivateKey", ""),
+		SFTPBasePath:       getStringFromMap(configMap, "SFTPBasePath", ""),
+		SFTPBaseURL:        getStringFromMap(configMap, "SFTPBaseURL", ""),
 	}
 
 	return InitStorage(cfg)
@@ -165,6 +200,26 @@ func getBoolFromMap(m map[string]interface{}, key string, defaultValue bool) boo
 	if v, ok := m[key]; ok {
 		if b, ok := v.(bool); ok {
 			return b
+		}
+	}
+	return defaultValue
+}
+
+func getIntFromMap(m map[string]interface{}, key string, defaultValue int) int {
+	if v, ok := m[key]; ok {
+		// 尝试多种类型转换
+		switch val := v.(type) {
+		case int:
+			return val
+		case int64:
+			return int(val)
+		case float64:
+			return int(val)
+		case string:
+			// 尝试解析字符串
+			if i, err := strconv.Atoi(val); err == nil {
+				return i
+			}
 		}
 	}
 	return defaultValue

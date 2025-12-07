@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"imagebed/config"
 	"imagebed/controllers"
 	"imagebed/middleware"
 	v1 "imagebed/routes/v1"
@@ -23,15 +24,20 @@ func SetupRoutes() *gin.Engine {
 	r.Use(middleware.PrometheusMiddleware())
 	r.Use(middleware.ErrorHandlerMiddleware())
 
-	// 配置CORS
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:5174", "http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	// 获取配置
+	cfg := config.GetConfig()
+
+	// 配置CORS（从配置文件读取）
+	if cfg.CORSEnabled {
+		r.Use(cors.New(cors.Config{
+			AllowOrigins:     cfg.CORSAllowOrigins,
+			AllowMethods:     cfg.CORSAllowMethods,
+			AllowHeaders:     cfg.CORSAllowHeaders,
+			ExposeHeaders:    []string{"Content-Length"},
+			AllowCredentials: true,
+			MaxAge:           time.Duration(cfg.CORSMaxAge) * time.Hour,
+		}))
+	}
 
 	// 健康检查端点（无需认证）
 	r.GET("/health", controllers.HealthCheck)

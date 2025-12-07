@@ -12,12 +12,13 @@ import (
 // ShortLinkClient 短链服务客户端
 type ShortLinkClient struct {
 	BaseURL    string
+	APIKey     string
 	HTTPClient *http.Client
 }
 
-// ShortLinkRequest 创建短链请求
+// ShortLinkRequest 创建短链请求（图床专用）
 type ShortLinkRequest struct {
-	ImageURL   string                 `json:"image_url"`
+	ImagePath  string                 `json:"image_path"` // 图片CDN路径（如：/uploads/xxx.jpg）
 	CustomCode string                 `json:"custom_code,omitempty"`
 	ExpireTime int64                  `json:"expire_time,omitempty"` // 过期时间（秒）
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
@@ -47,7 +48,7 @@ type BatchShortLinkRequest struct {
 
 // ImageInfo 图片信息
 type ImageInfo struct {
-	ImageURL   string                 `json:"image_url"`
+	ImagePath  string                 `json:"image_path"` // CDN路径
 	CustomCode string                 `json:"custom_code,omitempty"`
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
@@ -77,9 +78,10 @@ type BatchItem struct {
 }
 
 // NewShortLinkClient 创建短链客户端
-func NewShortLinkClient(baseURL string) *ShortLinkClient {
+func NewShortLinkClient(baseURL string, apiKey string) *ShortLinkClient {
 	return &ShortLinkClient{
 		BaseURL: baseURL,
+		APIKey:  apiKey,
 		HTTPClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -93,11 +95,17 @@ func (c *ShortLinkClient) CreateShortLink(req *ShortLinkRequest) (*ShortLink, er
 		return nil, fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	resp, err := c.HTTPClient.Post(
-		c.BaseURL+"/api/imagebed/create",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
+	httpReq, err := http.NewRequest("POST", c.BaseURL+"/api/imagebed/create", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	if c.APIKey != "" {
+		httpReq.Header.Set("X-API-Key", c.APIKey)
+	}
+
+	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
@@ -127,11 +135,17 @@ func (c *ShortLinkClient) BatchCreateShortLinks(req *BatchShortLinkRequest) (*Ba
 		return nil, fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	resp, err := c.HTTPClient.Post(
-		c.BaseURL+"/api/imagebed/batch",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
+	httpReq, err := http.NewRequest("POST", c.BaseURL+"/api/imagebed/batch", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	if c.APIKey != "" {
+		httpReq.Header.Set("X-API-Key", c.APIKey)
+	}
+
+	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}

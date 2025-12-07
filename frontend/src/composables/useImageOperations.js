@@ -4,31 +4,36 @@ import { recordDownload } from '@/api'
 export function useImageOperations() {
   // 复制图片链接 - 多种格式
   const copyImageLink = async (image, format = 'url') => {
-    const fullUrl = window.location.origin + image.url
+    // 优先使用短链，如果不存在则使用原始URL
+    const baseUrl = image.shortLinkUrl || (window.location.origin + image.url)
+    const displayName = image.originalName || image.fileName
     let textToCopy = ''
-    
+
     switch (format) {
       case 'url':
-        textToCopy = fullUrl
+        textToCopy = baseUrl
         break
       case 'markdown':
-        textToCopy = `![${image.fileName}](${fullUrl})`
+        textToCopy = `![${displayName}](${baseUrl})`
         break
       case 'html':
-        textToCopy = `<img src="${fullUrl}" alt="${image.fileName}" />`
+        textToCopy = `<img src="${baseUrl}" alt="${displayName}" />`
         break
       case 'bbcode':
-        textToCopy = `[img]${fullUrl}[/img]`
+        textToCopy = `[img]${baseUrl}[/img]`
         break
       default:
-        textToCopy = fullUrl
+        textToCopy = baseUrl
     }
-    
+
+    const isShortLink = !!image.shortLinkUrl
+    const successMessage = isShortLink ? '短链已复制到剪贴板' : '链接已复制到剪贴板'
+
     try {
       // 尝试使用现代 Clipboard API
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(textToCopy)
-        ElMessage.success('链接已复制到剪贴板')
+        ElMessage.success(successMessage)
       } else {
         // 降级方案：使用传统方法
         const textArea = document.createElement('textarea')
@@ -37,15 +42,15 @@ export function useImageOperations() {
         textArea.style.left = '-9999px'
         document.body.appendChild(textArea)
         textArea.select()
-        
+
         try {
           document.execCommand('copy')
-          ElMessage.success('链接已复制到剪贴板')
+          ElMessage.success(successMessage)
         } catch (err) {
           ElMessage.error('复制失败，请手动复制')
           console.error('复制失败:', err)
         }
-        
+
         document.body.removeChild(textArea)
       }
     } catch (err) {
@@ -64,10 +69,11 @@ export function useImageOperations() {
     } catch (error) {
       console.error('记录下载失败:', error)
     }
-    
+
     const link = document.createElement('a')
     link.href = image.url
-    link.download = image.fileName
+    link.download = image.originalName || image.fileName
+    link.click()
     link.click()
   }
 

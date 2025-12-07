@@ -2,6 +2,18 @@
 -- Worker 进程初始化
 
 local scheduler = require "core.scheduler"
+local logger = require "utils.logger"
+
+-- 初始化 Prometheus（必须在 init_worker 阶段）
+local ok, err = pcall(function()
+    local prometheus = require "utils.prometheus"
+    prometheus.init()
+    logger.info("Prometheus metrics initialized in worker " .. ngx.worker.id())
+end)
+
+if not ok then
+    logger.error("Prometheus initialization failed: " .. tostring(err))
+end
 
 -- Worker 进程启动时执行
 ngx.log(ngx.INFO, "Worker 进程启动，PID: ", ngx.worker.pid())

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `short_links` (
     `targets` JSON NOT NULL COMMENT '目标URL列表（JSON数组）',
     `strategy` VARCHAR(32) NOT NULL DEFAULT 'weight' COMMENT '分流策略: weight, geo, ip, asn, hash',
     `security_config` JSON DEFAULT NULL COMMENT '安全配置（referer白名单、token密钥等）',
+    `service_type` VARCHAR(32) NOT NULL DEFAULT 'general' COMMENT '服务类型: general, imagebed, custom',
     `status` ENUM('active', 'paused', 'deleted') NOT NULL DEFAULT 'active' COMMENT '状态',
     `visit_count` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '访问次数',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `short_links` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_short_code` (`short_code`),
     KEY `idx_status` (`status`),
+    KEY `idx_service_type` (`service_type`),
     KEY `idx_created_at` (`created_at`),
     KEY `idx_expires_at` (`expires_at`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '短链表';

@@ -7,7 +7,7 @@
       @click="$emit('preview', image)"
     >
       <div class="image-wrapper">
-        <img v-lazy="getImageUrl(image)" :alt="image.fileName" />
+        <img v-lazy="getImageUrl(image)" :alt="image.originalName || image.fileName" />
         <div class="image-overlay" @click.stop>
           <div class="overlay-row">
             <el-button
@@ -89,8 +89,8 @@
         </div>
       </div>
       <div class="image-info">
-        <div class="image-name" :title="image.fileName">
-          {{ image.fileName }}
+        <div class="image-name" :title="image.originalName || image.fileName">
+          {{ image.originalName || image.fileName }}
         </div>
         <div class="image-tags" v-if="image.tags">
           <el-tag

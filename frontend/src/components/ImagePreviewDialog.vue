@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="visible"
-    :title="image?.fileName"
+    :title="image?.originalName || image?.fileName"
     width="80%"
     class="preview-dialog"
   >
@@ -13,7 +13,7 @@
         <h3>图片详情</h3>
         <div class="detail-item">
           <span class="detail-label">文件名:</span>
-          <span class="detail-value">{{ image?.fileName }}</span>
+          <span class="detail-value">{{ image?.originalName || image?.fileName }}</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">尺寸:</span>
@@ -110,7 +110,7 @@
           <ShortLinkInfo
             :short-link-code="image.shortLinkCode"
             :short-link-url="image.shortLinkUrl"
-            :file-name="image.fileName"
+            :file-name="image.originalName || image.fileName"
             :show-q-r-code="true"
             :show-stats="false"
           />

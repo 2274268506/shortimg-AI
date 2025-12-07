@@ -1,5 +1,78 @@
 # 更新日志
 
+## v1.6.0 - 存储扩展版本 (2025-01-XX) 🆕
+
+### 🎉 新增功能
+
+#### 存储类型扩展
+- ✅ **WebDAV存储支持**
+  - 支持坚果云、NextCloud、ownCloud等WebDAV服务
+  - 应用密码认证机制
+  - 自动路径清理防止路径遍历攻击
+  - 依赖: `github.com/studio-b12/gowebdav v0.11.0`
+
+- ✅ **SFTP存储支持**
+  - 支持VPS、云服务器SSH文件传输
+  - 密码和SSH密钥双认证模式
+  - 支持ED25519和RSA密钥格式
+  - 自动创建远程目录
+  - 依赖: `github.com/pkg/sftp v1.13.10`, `golang.org/x/crypto/ssh`
+
+#### 配置增强
+- ✅ **注册控制** - 新增 `ALLOW_REGISTRATION` 配置项，支持关闭用户注册
+- ✅ **API认证** - 短链服务支持 API Key 认证 (`SHORT_LINK_API_KEY`)
+- ✅ **存储配置** - 完善所有7种存储类型的环境变量配置
+
+#### 短链服务优化
+- ✅ **GeoIP智能路由** - 支持根据用户IP自动选择最优CDN节点
+- ✅ **NAT环境支持** - 支持 `CDN_ROUTING_MODE` 强制路由模式 (auto/public/private)
+- ✅ **X-Forwarded-For** - 支持多层代理的真实IP获取
+- ✅ **私有IP检测** - 自动识别内网IP (10.x, 172.16-31.x, 192.168.x, 127.x)
+
+#### 前端改进
+- ✅ **Toast通知** - 替换阻塞式 alert 为非阻塞 toast 通知
+- ✅ **自动隐藏** - 2秒后自动消失，不干扰用户操作
+- ✅ **颜色编码** - 成功/错误/信息用不同颜色区分
+
+### 🐛 Bug修复
+- 🔧 修复 Dashboard 重复变量声明错误 (`currentStep`)
+- 🔧 修复 Docker 卷挂载只读问题（移除 `:ro` 标志）
+- 🔧 修复 NAT 环境下 GeoIP 路由错误重定向到 localhost
+
+### 📚 文档更新
+- 📖 更新 `STORAGE_GUIDE.md` - 添加 WebDAV 和 SFTP 详细配置
+- 📖 新增测试脚本 `test_storage.sh` 和 `test_storage.ps1`
+- 📖 更新 `.env` 模板，包含所有存储类型完整示例
+- 📖 补充安全建议和常见问题排查指南
+
+### 🔨 技术改进
+- ⚙️ **存储接口统一** - 所有存储类型实现相同的 `Storage` 接口
+- ⚙️ **配置解耦** - 使用 map 传递配置避免循环依赖
+- ⚙️ **类型转换增强** - `getIntFromMap` 支持 int/int64/float64/string 多种类型
+- ⚙️ **路径安全** - WebDAV 和 SFTP 实现路径清理防止攻击
+
+### 📦 依赖更新
+```bash
+# 新增依赖
+go get github.com/studio-b12/gowebdav@v0.11.0
+go get github.com/pkg/sftp@v1.13.10
+go get golang.org/x/crypto/ssh
+```
+
+### 📊 存储类型对比
+
+| 存储类型 | 协议 | 适用场景 | 配置难度 | 推荐指数 |
+|---------|------|---------|---------|---------|
+| 本地 | File | 开发/测试 | ⭐ 简单 | ⭐⭐⭐ |
+| OSS | HTTP | 阿里云用户 | ⭐⭐ 中等 | ⭐⭐⭐⭐ |
+| COS | HTTP | 腾讯云用户 | ⭐⭐ 中等 | ⭐⭐⭐⭐ |
+| 七牛 | HTTP | 国内CDN | ⭐⭐ 中等 | ⭐⭐⭐⭐ |
+| S3/MinIO | HTTP | 国际/自建 | ⭐⭐⭐ 复杂 | ⭐⭐⭐⭐ |
+| WebDAV | HTTP | 个人网盘 | ⭐⭐ 中等 | ⭐⭐⭐⭐ 🆕 |
+| SFTP | SSH | VPS部署 | ⭐⭐⭐ 复杂 | ⭐⭐⭐⭐⭐ 🆕 |
+
+---
+
 ## v1.5.2 - 网格视图文本溢出修复 (2025-12-03)
 
 ### 🐛 Bug 修复

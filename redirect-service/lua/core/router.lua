@@ -1,6 +1,7 @@
 -- core/router.lua
 -- 短链路由核心逻辑
 
+local config = require "conf.config"
 local redis_client = require "storage.redis_client"
 local mysql_client = require "storage.mysql_client"
 local strategies = require "strategies.strategy_manager"
@@ -17,27 +18,8 @@ local ngx_time = ngx.time
 
 local _M = {}
 
--- 获取客户端信息
-local function get_client_info()
-    local info = {
-        ip = ngx_var.remote_addr,
-        user_agent = ngx_var.http_user_agent,
-        referer = ngx_var.http_referer,
-        request_uri = ngx_var.request_uri,
-        -- GeoIP 信息（需要 ngx_http_geoip2_module）
-        country = ngx_var.geoip2_data_country_code or "UNKNOWN",
-        province = ngx_var.geoip2_data_province_name or "UNKNOWN",
-        city = ngx_var.geoip2_data_city_name or "UNKNOWN",
-        isp = ngx_var.geoip2_data_isp or "UNKNOWN",
-        asn = ngx_var.geoip2_data_asn or "UNKNOWN",
-        -- 设备类型检测
-        device_type = detect_device_type(ngx_var.http_user_agent)
-    }
-    return info
-end
-
 -- 检测设备类型
-function detect_device_type(user_agent)
+local function detect_device_type(user_agent)
     if not user_agent then
         return "unknown"
     end
@@ -52,6 +34,50 @@ function detect_device_type(user_agent)
     else
         return "desktop"
     end
+end
+
+-- 获取客户端真实IP（支持NAT/代理环境）
+local function get_real_client_ip()
+    -- 1. 优先从 X-Forwarded-For 获取（多层代理时取第一个）
+    local xff = ngx_var.http_x_forwarded_for
+    if xff then
+        -- X-Forwarded-For 格式: client, proxy1, proxy2
+        -- 取第一个IP（真实客户端IP）
+        local first_ip = xff:match("([^,]+)")
+        if first_ip then
+            return first_ip:match("^%s*(.-)%s*$") -- 去除空格
+        end
+    end
+
+    -- 2. 尝试从 X-Real-IP 获取
+    local real_ip = ngx_var.http_x_real_ip
+    if real_ip then
+        return real_ip
+    end
+
+    -- 3. 降级到 remote_addr（直连情况）
+    return ngx_var.remote_addr
+end
+
+-- 获取客户端信息
+local function get_client_info()
+    local client_ip = get_real_client_ip()
+
+    local info = {
+        ip = client_ip,
+        user_agent = ngx_var.http_user_agent,
+        referer = ngx_var.http_referer,
+        request_uri = ngx_var.request_uri,
+        -- GeoIP 信息（需要 ngx_http_geoip2_module）
+        country = ngx_var.geoip2_data_country_code or "UNKNOWN",
+        province = ngx_var.geoip2_data_province_name or "UNKNOWN",
+        city = ngx_var.geoip2_data_city_name or "UNKNOWN",
+        isp = ngx_var.geoip2_data_isp or "UNKNOWN",
+        asn = ngx_var.geoip2_data_asn or "UNKNOWN",
+        -- 设备类型检测
+        device_type = detect_device_type(ngx_var.http_user_agent)
+    }
+    return info
 end
 
 -- 从缓存获取短链信息
@@ -193,17 +219,22 @@ local function select_target(link_data, client_info)
     -- 过滤健康的服务器
     local healthy_targets = {}
     for _, target in ipairs(targets) do
-        -- 生成完整URL（支持两种方式）
+        -- 生成完整URL（支持三种方式）
         local target_url
         if target.url then
-            -- 方式1: 直接使用完整URL（向后兼容）
+            -- 方式1: 直接使用完整URL（通用短链）
             target_url = target.url
         elseif target.cdn and target.path then
-            -- 方式2: 使用CDN标识 + 路径（推荐）
-            local config = require "conf.config"
+            -- 方式2: 使用指定CDN标识 + 路径
             target_url = config.get_cdn_url(target.cdn, target.path)
+        elseif target.path then
+            -- 方式3: 只有路径，根据GeoIP自动选择CDN（图床等服务）
+            local client_ip = client_info.ip or ngx.var.remote_addr
+            local cdn_name = config.select_cdn_by_geo(client_ip)
+            logger.info("GeoIP分流: IP=" .. client_ip .. " CDN=" .. cdn_name)
+            target_url = config.get_cdn_url(cdn_name, target.path)
         else
-            logger.warn("Invalid target config: missing url or cdn+path")
+            logger.warn("Invalid target config: missing url or path")
             goto continue
         end
 

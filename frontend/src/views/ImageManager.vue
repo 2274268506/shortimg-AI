@@ -2,7 +2,7 @@
   <div class="image-manager">
     <!-- 顶部工具栏 -->
     <ImageToolbar
-      @upload="showUploadDialog = true"
+      @upload="handleShowUpload"
       @createAlbum="handleShowCreateAlbum"
     />
 
@@ -342,6 +342,17 @@ const handleSelectAlbum = async (album) => {
   showMobileSidebar.value = false
 }
 
+const handleShowUpload = () => {
+  // 默认上传到当前已打开的相册
+  if (currentAlbum.value) {
+    uploadAlbumId.value = currentAlbum.value.id
+  } else if (albums.value.length > 0) {
+    // 如果没有选中相册，默认选择第一个相册
+    uploadAlbumId.value = albums.value[0].id
+  }
+  showUploadDialog.value = true
+}
+
 const handleShowCreateAlbum = () => {
   isEditAlbum.value = false
   editingAlbum.value = null
@@ -432,7 +443,7 @@ const handleSortChange = async () => {
 }
 
 // Upload operations
-const handleUpload = async ({ albumId, files }) => {
+const handleUpload = async ({ albumId, enableShortLink, files }) => {
   if (files.length === 0) {
     ElMessage.warning('请选择要上传的图片')
     return
@@ -450,7 +461,7 @@ const handleUpload = async ({ albumId, files }) => {
     uploadMessage.value = `正在上传 ${totalFiles} 个文件...`
     uploadProgress.value = 30
 
-    await store.batchUploadImages(files, albumId)
+    await store.batchUploadImages(files, albumId, enableShortLink)
 
     uploadProgress.value = 100
     uploadStatus.value = 'success'

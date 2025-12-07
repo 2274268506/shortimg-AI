@@ -46,7 +46,31 @@ _M.cdn_servers = {
         domain = os.getenv("CDN_FALLBACK_DOMAIN") or "cdn-fallback.example.com",
         protocol = os.getenv("CDN_FALLBACK_PROTOCOL") or "https",
     },
+    -- 默认服务器（指向fallback）
+    default = {
+        domain = os.getenv("CDN_FALLBACK_DOMAIN") or "cdn-fallback.example.com",
+        protocol = os.getenv("CDN_FALLBACK_PROTOCOL") or "https",
+    },
+    -- 私有CDN（开发环境）
+    private = {
+        domain = os.getenv("CDN_PRIVATE_DOMAIN") or "localhost",
+        port = os.getenv("CDN_PRIVATE_PORT"),  -- 可选端口
+        protocol = os.getenv("CDN_PRIVATE_PROTOCOL") or "http",
+    },
+    -- 公共CDN（生产环境）
+    public = {
+        domain = os.getenv("CDN_PUBLIC_DOMAIN") or "dxy.oxvxo.net",
+        port = os.getenv("CDN_PUBLIC_PORT") or "18443",
+        protocol = os.getenv("CDN_PUBLIC_PROTOCOL") or "https",
+    },
 }
+
+-- CDN分流模式配置
+_M.cdn_routing_mode = os.getenv("CDN_ROUTING_MODE") or "auto"
+-- 可选值:
+--   "auto"   - 自动GeoIP分流（默认，根据客户端IP判断）
+--   "public" - 强制使用public CDN（适用于公网服务，NAT环境）
+--   "private" - 强制使用private CDN（适用于内网服务）
 
 -- 生成完整 CDN URL 的辅助函数
 function _M.get_cdn_url(cdn_name, path)
@@ -60,7 +84,14 @@ function _M.get_cdn_url(cdn_name, path)
         path = "/" .. path
     end
 
-    return cdn.protocol .. "://" .. cdn.domain .. path
+    -- 构建URL（带端口号如果存在）
+    local url = cdn.protocol .. "://" .. cdn.domain
+    if cdn.port and cdn.port ~= "" then
+        url = url .. ":" .. cdn.port
+    end
+    url = url .. path
+
+    return url
 end
 
 -- Redis 配置
@@ -128,5 +159,63 @@ _M.admin = {
     username = os.getenv("ADMIN_USERNAME") or "admin",
     password = os.getenv("ADMIN_PASSWORD") or "admin123",
 }
+
+-- ==================== GeoIP分流函数 ====================
+
+-- 判断是否为私有IP地址
+function _M.is_private_ip(ip)
+    if not ip then return false end
+
+    -- 匹配 10.0.0.0/8
+    if ip:match("^10%.") then
+        return true
+    end
+
+    -- 匹配 172.16.0.0/12
+    local second = ip:match("^172%.(%d+)%.")
+    if second then
+        local num = tonumber(second)
+        if num >= 16 and num <= 31 then
+            return true
+        end
+    end
+
+    -- 匹配 192.168.0.0/16
+    if ip:match("^192%.168%.") then
+        return true
+    end
+
+    -- 匹配 127.0.0.0/8 (localhost)
+    if ip:match("^127%.") then
+        return true
+    end
+
+    return false
+end
+
+-- 根据客户端IP选择CDN服务器
+function _M.select_cdn_by_geo(client_ip)
+    local logger = require "utils.logger"
+
+    -- 检查是否强制模式
+    if _M.cdn_routing_mode == "public" then
+        logger.info("CDN分流: 强制模式=public -> CDN=public")
+        return "public"
+    elseif _M.cdn_routing_mode == "private" then
+        logger.info("CDN分流: 强制模式=private -> CDN=private")
+        return "private"
+    end
+
+    -- auto模式：根据IP判断
+    -- 私有IP使用private CDN（开发环境）
+    if _M.is_private_ip(client_ip) then
+        logger.info("GeoIP分流: IP=" .. (client_ip or "nil") .. " 判定为私有IP -> CDN=private")
+        return "private"
+    end
+
+    -- 公网IP使用public CDN（生产环境）
+    logger.info("GeoIP分流: IP=" .. (client_ip or "nil") .. " 判定为公网IP -> CDN=public")
+    return "public"
+end
 
 return _M
