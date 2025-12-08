@@ -16,12 +16,13 @@ type ShortLinkClient struct {
 	HTTPClient *http.Client
 }
 
-// ShortLinkRequest 创建短链请求（图床专用）
+// ShortLinkRequest 创建短链请求（图床专用 - V2 API）
 type ShortLinkRequest struct {
-	ImagePath  string                 `json:"image_path"` // 图片CDN路径（如：/uploads/xxx.jpg）
-	CustomCode string                 `json:"custom_code,omitempty"`
-	ExpireTime int64                  `json:"expire_time,omitempty"` // 过期时间（秒）
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	ImagePath        string                 `json:"image_path"`                   // 图片CDN路径（如：/uploads/xxx.jpg）
+	CustomCode       string                 `json:"custom_code,omitempty"`        // 自定义短链代码
+	EnableGeoRouting bool                   `json:"enable_geo_routing,omitempty"` // 是否启用地理路由
+	ExpireTime       int64                  `json:"expire_time,omitempty"`        // 过期时间（秒）
+	Metadata         map[string]interface{} `json:"metadata,omitempty"`           // 元数据（已弃用）
 }
 
 // ShortLinkResponse 短链响应
@@ -31,13 +32,17 @@ type ShortLinkResponse struct {
 	Error   string     `json:"error,omitempty"`
 }
 
-// ShortLink 短链信息
+// ShortLink 短链信息（V2 API 响应）
 type ShortLink struct {
-	Code      string `json:"code"`
-	ShortURL  string `json:"short_url"`
-	LongURL   string `json:"long_url"`
-	ExpireAt  *int64 `json:"expire_at,omitempty"`
-	CreatedAt int64  `json:"created_at"`
+	Code              string `json:"code"`                          // 短链代码
+	ShortURL          string `json:"short_url"`                     // 短链URL
+	ImagePath         string `json:"image_path,omitempty"`          // 图片路径
+	Strategy          string `json:"strategy,omitempty"`            // 路由策略
+	TargetsCount      int    `json:"targets_count,omitempty"`       // CDN目标数量
+	GeoRoutingEnabled bool   `json:"geo_routing_enabled,omitempty"` // 地理路由是否启用
+	ExpireAt          *int64 `json:"expire_at,omitempty"`           // 过期时间
+	CreatedAt         int64  `json:"created_at"`                    // 创建时间
+	LongURL           string `json:"long_url,omitempty"`            // 长链接（兼容字段）
 }
 
 // BatchShortLinkRequest 批量创建请求
@@ -46,11 +51,12 @@ type BatchShortLinkRequest struct {
 	ExpireTime int64       `json:"expire_time,omitempty"`
 }
 
-// ImageInfo 图片信息
+// ImageInfo 图片信息（V2 API）
 type ImageInfo struct {
-	ImagePath  string                 `json:"image_path"` // CDN路径
-	CustomCode string                 `json:"custom_code,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	ImagePath        string                 `json:"image_path"`                   // CDN路径
+	CustomCode       string                 `json:"custom_code,omitempty"`        // 自定义代码
+	EnableGeoRouting bool                   `json:"enable_geo_routing,omitempty"` // 地理路由
+	Metadata         map[string]interface{} `json:"metadata,omitempty"`           // 元数据（已弃用）
 }
 
 // BatchShortLinkResponse 批量响应
@@ -88,14 +94,20 @@ func NewShortLinkClient(baseURL string, apiKey string) *ShortLinkClient {
 	}
 }
 
-// CreateShortLink 创建单个短链
+// CreateShortLink 创建单个短链（V2 API）
 func (c *ShortLinkClient) CreateShortLink(req *ShortLinkRequest) (*ShortLink, error) {
+	// 默认启用地理路由
+	if !req.EnableGeoRouting {
+		req.EnableGeoRouting = true
+	}
+
 	jsonData, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.BaseURL+"/api/imagebed/create", bytes.NewBuffer(jsonData))
+	// 使用 V2 API 端点
+	httpReq, err := http.NewRequest("POST", c.BaseURL+"/api/v2/imagebed/create", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %w", err)
 	}
@@ -128,14 +140,22 @@ func (c *ShortLinkClient) CreateShortLink(req *ShortLinkRequest) (*ShortLink, er
 	return result.Data, nil
 }
 
-// BatchCreateShortLinks 批量创建短链
+// BatchCreateShortLinks 批量创建短链（V2 API）
 func (c *ShortLinkClient) BatchCreateShortLinks(req *BatchShortLinkRequest) (*BatchResult, error) {
+	// 默认为所有图片启用地理路由
+	for i := range req.Images {
+		if !req.Images[i].EnableGeoRouting {
+			req.Images[i].EnableGeoRouting = true
+		}
+	}
+
 	jsonData, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.BaseURL+"/api/imagebed/batch", bytes.NewBuffer(jsonData))
+	// 使用 V2 API 端点
+	httpReq, err := http.NewRequest("POST", c.BaseURL+"/api/v2/imagebed/batch", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %w", err)
 	}
@@ -169,6 +189,7 @@ func (c *ShortLinkClient) BatchCreateShortLinks(req *BatchShortLinkRequest) (*Ba
 }
 
 // GetShortLinkInfo 获取短链信息
+// Deprecated: V2 API 不再提供此功能，短链信息已包含在创建响应中
 func (c *ShortLinkClient) GetShortLinkInfo(code string) (*ShortLink, error) {
 	resp, err := c.HTTPClient.Get(c.BaseURL + "/api/imagebed/info/" + code)
 	if err != nil {
@@ -194,6 +215,7 @@ func (c *ShortLinkClient) GetShortLinkInfo(code string) (*ShortLink, error) {
 }
 
 // UpdateMetadata 更新短链元数据
+// Deprecated: V2 API 不再支持元数据更新，元数据应在创建时设置
 func (c *ShortLinkClient) UpdateMetadata(code string, metadata map[string]interface{}) error {
 	jsonData, err := json.Marshal(metadata)
 	if err != nil {
@@ -257,6 +279,7 @@ type TopImage struct {
 }
 
 // GetStats 获取统计信息
+// Deprecated: V2 API 不再提供全局统计，请使用后端自己的统计系统
 func (c *ShortLinkClient) GetStats() (*Stats, error) {
 	resp, err := c.HTTPClient.Get(c.BaseURL + "/api/imagebed/stats")
 	if err != nil {

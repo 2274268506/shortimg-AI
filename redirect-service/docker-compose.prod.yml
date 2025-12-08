@@ -23,6 +23,8 @@ services:
       - /root/docker/shortimg-ai/redirect-service/conf/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - /root/docker/shortimg-ai/redirect-service/conf/upstream.conf:/usr/local/openresty/nginx/conf/upstream.conf:ro
       - /root/docker/shortimg-ai/redirect-service/conf/config.lua:/usr/local/openresty/nginx/conf/config.lua:ro
+      # 路由规则配置文件（CDN 节点和路由策略）
+      - /root/docker/shortimg-ai/redirect-service/routing_rules.yaml:/usr/local/openresty/nginx/lua/routing_rules.yaml:ro
       # https.conf 不需要 - 外部 Nginx 已处理 SSL/TLS
       
       # Lua 脚本

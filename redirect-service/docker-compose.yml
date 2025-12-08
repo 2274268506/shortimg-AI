@@ -13,6 +13,8 @@ services:
       - ./conf/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
       - ./conf/upstream.conf:/usr/local/openresty/nginx/conf/upstream.conf
       - ./conf/config.lua:/usr/local/openresty/nginx/conf/config.lua
+      # 路由规则配置文件（CDN 节点和路由策略）
+      - ./routing_rules.yaml:/usr/local/openresty/nginx/lua/routing_rules.yaml:ro
       # https.conf 不需要 - 如需容器内 HTTPS，使用外部 Nginx 反向代理更安全
       - ./lua:/usr/local/openresty/nginx/lua
       - ./lib:/usr/local/openresty/site/lualib/resty

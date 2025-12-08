@@ -11,7 +11,7 @@ function _M.init()
     -- 初始化日志
     local logger = require "utils.logger"
     logger.info("Loading configuration...")
-    logger.info("Redirect service: " .. config.server.base_url)
+    logger.info("Redirect service starting...")
 
     -- 初始化 Redis 连接池
     local redis_client = require "storage.redis_client"

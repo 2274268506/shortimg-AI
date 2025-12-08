@@ -43,8 +43,13 @@ local function generate_unique_code(prefix, length)
 
     repeat
         local code = (prefix or "") .. code_generator.generate(length or 12)
-        local exists = mysql_client.query("SELECT id FROM short_links WHERE short_code=?", {code})
+        local exists, err = mysql_client.query("SELECT id FROM short_links WHERE short_code=?", {code})
         retry_count = retry_count + 1
+
+        if err then
+            logger.error("查询数据库失败: " .. (err or "unknown"))
+            return nil
+        end
 
         if not exists or #exists == 0 then
             return code
@@ -92,7 +97,6 @@ function _M.create()
     
     local targets_json = cjson.encode(link_config.targets)
     local strategy = link_config.strategy
-    local fallback_url = link_config.fallback_url
 
     -- 计算过期时间
     local expire_at = (expire_time and expire_time > 0) and (ngx.time() + expire_time) or nil
@@ -101,13 +105,13 @@ function _M.create()
     local res, err
     if expire_at then
         res, err = mysql_client.query(
-            "INSERT INTO short_links(short_code,targets,strategy,fallback_url,service_type,expires_at,created_at,updated_at,visit_count,status) VALUES(?,?,?,?,?,?,NOW(),NOW(),0,'active')",
-            {code, targets_json, strategy, fallback_url, "imagebed", ngx.localtime(expire_at)}
+            "INSERT INTO short_links(short_code,targets,strategy,service_type,expires_at,created_at,updated_at,visit_count,status) VALUES(?,?,?,?,?,NOW(),NOW(),0,'active')",
+            {code, targets_json, strategy, "imagebed", ngx.localtime(expire_at)}
         )
     else
         res, err = mysql_client.query(
-            "INSERT INTO short_links(short_code,targets,strategy,fallback_url,service_type,created_at,updated_at,visit_count,status) VALUES(?,?,?,?,NOW(),NOW(),0,'active')",
-            {code, targets_json, strategy, fallback_url, "imagebed"}
+            "INSERT INTO short_links(short_code,targets,strategy,service_type,created_at,updated_at,visit_count,status) VALUES(?,?,?,?,NOW(),NOW(),0,'active')",
+            {code, targets_json, strategy, "imagebed"}
         )
     end
 
@@ -188,20 +192,18 @@ function _M.batch_create()
                 
                 local targets_json = cjson.encode(link_config.targets)
                 local strategy = link_config.strategy
-                local fallback_url = link_config.fallback_url
 
                 -- 插入数据库
                 local res, db_err = mysql_client.query(
-                    "INSERT INTO short_links(short_code,targets,strategy,fallback_url,service_type,created_at,updated_at,visit_count,status) VALUES(?,?,?,?,NOW(),NOW(),0,'active')",
-                    {code, targets_json, strategy, fallback_url, "imagebed"}
+                    "INSERT INTO short_links(short_code,targets,strategy,service_type,created_at,updated_at,visit_count,status) VALUES(?,?,?,?,NOW(),NOW(),0,'active')",
+                    {code, targets_json, strategy, "imagebed"}
                 )
 
                 if res then
                     -- 写入缓存
                     local cache_data = {
                         targets = link_config.targets,
-                        strategy = strategy,
-                        fallback_url = fallback_url
+                        strategy = strategy
                     }
                     redis_client.set("short_link:" .. code, cjson.encode(cache_data), 3600)
 
@@ -283,6 +285,29 @@ function _M.create_generic()
         expire_at = expire_at,
         created_at = ngx.time()
     })
+end
+
+-- 路由处理函数（入口）
+function _M.handle()
+    local method = ngx.var.request_method
+    local uri = ngx.var.uri
+
+    if method ~= "POST" then
+        return respond_error("仅支持 POST 请求", 405)
+    end
+
+    -- V2 图床 API 路由
+    if uri:match("^/api/v2/imagebed/create$") then
+        return _M.create()
+    elseif uri:match("^/api/v2/imagebed/batch$") then
+        return _M.batch_create()
+    
+    -- V2 通用短链 API 路由
+    elseif uri:match("^/api/v2/generic/create$") then
+        return _M.create_generic()
+    else
+        return respond_error("未知的 API 端点", 404)
+    end
 end
 
 return _M

@@ -1,19 +1,11 @@
 -- config.lua
 -- 短链重定向服务配置文件
--- 说明：CDN 节点和分流规则已移至 routing_rules.yaml
+-- 说明：
+--   1. CDN 节点和分流规则已移至 routing_rules.yaml
+--   2. 短链域名由外部 Nginx 配置，应用层不需要配置
+--   3. 此文件仅包含基础设施配置（Redis, MySQL, GeoIP 等）
 
 local _M = {}
-
--- 重定向服务器配置
-_M.server = {
-    -- 重定向服务域名（可配置）
-    domain = os.getenv("REDIRECT_DOMAIN") or "short.example.com",
-    -- 重定向服务协议
-    protocol = os.getenv("REDIRECT_PROTOCOL") or "https",
-}
-
--- 自动生成完整URL前缀
-_M.server.base_url = _M.server.protocol .. "://" .. _M.server.domain
 
 -- Redis 配置
 _M.redis = {

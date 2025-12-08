@@ -1,10 +1,19 @@
 FROM openresty/openresty:alpine
 
-# 安装基础工具和 libmaxminddb（OPM 需要 perl，maxminddb 需要 C 库）
-RUN apk add --no-cache curl bash git perl tar libmaxminddb libmaxminddb-dev
+# 安装基础工具和依赖库
+# - libmaxminddb: GeoIP 数据库支持
+# - yaml: YAML 配置文件解析支持
+# - build-base: 编译工具链
+# - perl: OPM 包管理器需要
+RUN apk add --no-cache curl bash git perl tar libmaxminddb libmaxminddb-dev yaml yaml-dev \
+    build-base lua5.1-dev luarocks5.1
 
 # 使用 OPM 安装 lua-resty-http
 RUN /usr/local/openresty/bin/opm get pintsized/lua-resty-http
+
+# 使用 LuaRocks 安装 lyaml（YAML 解析库）
+# 将库安装到 OpenResty 的 LuaJIT 路径
+RUN luarocks-5.1 install --tree=/usr/local/openresty/luajit lyaml YAML_DIR=/usr
 
 # 手动安装 lua-resty-maxminddb（从 GitHub）
 RUN mkdir -p /tmp/maxminddb && \
