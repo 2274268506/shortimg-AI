@@ -4,6 +4,10 @@
 local scheduler = require "core.scheduler"
 local logger = require "utils.logger"
 
+-- 初始化随机数种子（每个 worker 独立的种子）
+math.randomseed(ngx.time() + ngx.worker.pid())
+logger.info("Random seed initialized in worker " .. ngx.worker.id())
+
 -- 初始化 Prometheus（必须在 init_worker 阶段）
 local ok, err = pcall(function()
     local prometheus = require "utils.prometheus"

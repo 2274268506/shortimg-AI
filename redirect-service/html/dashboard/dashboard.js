@@ -3,37 +3,81 @@
 
 console.log('🎯 dashboard.js 开始加载...');
 
-// API 基础配置
-const API_BASE = '/api/v1';
+// API 基础配置 - 统一使用 V2 API
+const API_BASE = '/api/v2/imagebed';  // V2 统一 API
 let API_KEY = localStorage.getItem('api_key') || '';
 
 console.log('🔑 API_KEY:', API_KEY ? '已设置' : '未设置');
+console.log('🔗 API V2:', API_BASE);
 
-// 延迟检查 API KEY，让所有函数先定义
-setTimeout(() => {
-  if (!API_KEY) {
-    console.log('⚠️ 未找到 API_KEY，显示设置提示');
-    showApiKeyPrompt();
-  }
-}, 1000);
-
-// 显示 API KEY 设置提示
+// 显示 API KEY 登录界面
 function showApiKeyPrompt() {
-  const message = `
-    ⚠️ 未设置 API Key
-
-    请先设置 API Key 才能使用管理功能。
-
-    测试用 API Key: sk_test_12345678901234567890123456789012
-
-    您可以：
-    1. 点击"确定"跳转到设置页面
-    2. 点击"取消"手动在浏览器控制台设置
-       localStorage.setItem('api_key', 'your-api-key')
+  // 创建登录遮罩层
+  const loginOverlay = document.createElement('div');
+  loginOverlay.id = 'login-overlay';
+  loginOverlay.innerHTML = `
+    <div class="login-container">
+      <div class="login-box">
+        <div class="login-header">
+          <h2>🔐 短链管理系统</h2>
+          <p>请输入 API Key 登录</p>
+        </div>
+        <form id="login-form" onsubmit="handleLogin(event)">
+          <div class="login-form-group">
+            <label for="api-key-input">API Key</label>
+            <input 
+              type="password" 
+              id="api-key-input" 
+              placeholder="请输入您的 API Key" 
+              required
+              autocomplete="off"
+            />
+          </div>
+          <button type="submit" class="login-btn">登录</button>
+        </form>
+      </div>
+    </div>
   `;
+  
+  document.body.appendChild(loginOverlay);
+  
+  // 聚焦到输入框
+  setTimeout(() => {
+    document.getElementById('api-key-input').focus();
+  }, 100);
+}
 
-  if (confirm(message)) {
-    window.location.href = '/dashboard/setup.html';
+// 处理登录
+function handleLogin(event) {
+  event.preventDefault();
+  
+  const apiKey = document.getElementById('api-key-input').value.trim();
+  
+  if (!apiKey) {
+    alert('请输入 API Key');
+    return;
+  }
+  
+  // 保存 API Key
+  localStorage.setItem('api_key', apiKey);
+  API_KEY = apiKey;
+  
+  // 移除登录界面
+  const overlay = document.getElementById('login-overlay');
+  if (overlay) {
+    overlay.remove();
+  }
+  
+  // 刷新页面数据
+  console.log('✅ API Key 已设置，正在加载数据...');
+  location.reload();
+}
+
+// 登出功能
+function logout() {
+  if (confirm('确定要登出吗？')) {
+    localStorage.removeItem('api_key');
+    location.reload();
   }
 }
 
@@ -182,7 +226,7 @@ async function refreshLinks(page = 1) {
   tbody.innerHTML = '<tr><td colspan="7" class="loading">加载中...</td></tr>';
 
   try {
-    const response = await request(`${API_BASE}/links?page=${page}&limit=20`);
+    const response = await request(`${API_BASE}?page=${page}&limit=20`);
 
     // 处理响应数据结构 { success: true, data: { links: [...], total: ... } }
     const data = response.data || response;
@@ -631,7 +675,7 @@ $('#create-form').addEventListener('submit', async (e) => {
   }
 
   try {
-    const result = await request(`${API_BASE}/links`, {
+    const result = await request(`${API_BASE}`, {
       method: 'POST',
       body: JSON.stringify(data)
     });
@@ -647,7 +691,7 @@ $('#create-form').addEventListener('submit', async (e) => {
 // 加载统计选项
 async function loadStatsOptions() {
   try {
-    const response = await request(`${API_BASE}/links?limit=1000`);
+    const response = await request(`${API_BASE}?limit=1000`);
     const data = response.data || response;
     const links = data.links || [];
     const select = $('#stats-link-select');
@@ -880,7 +924,7 @@ async function loadSystemInfo() {
 // 加载首页统计
 async function loadDashboardStats() {
   try {
-    // 加载总体统计
+    // 加载总体统计 - 使用 V2 API 统计接口
     const response = await request(`${API_BASE}/stats/overview`);
     const statsData = response.data || response;
 
@@ -903,21 +947,11 @@ async function loadDashboardStats() {
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
-  // 更新 API Key 显示
-  updateApiKeyDisplay();
-
   // 检查 API Key
   if (!API_KEY) {
-    const key = prompt('请输入 API Key (测试Key: sk_test_12345678901234567890123456789012):');
-    if (key) {
-      localStorage.setItem('api_key', key);
-      API_KEY = key;
-      updateApiKeyDisplay();
-      location.reload();
-    } else {
-      showNotification('需要 API Key 才能使用', 'error');
-      return;
-    }
+    console.log('⚠️ 未找到 API Key，显示登录界面');
+    showApiKeyPrompt();
+    return;
   }
 
   // 加载初始数据
@@ -1048,7 +1082,7 @@ async function viewLink(shortCode) {
   content.innerHTML = '<div class="loading">加载中...</div>';
 
   try {
-    const response = await request(`${API_BASE}/links/${shortCode}`);
+    const response = await request(`${API_BASE}/${shortCode}`);
     const link = response.data || response;
 
     content.innerHTML = `
@@ -1132,7 +1166,7 @@ async function editLink(shortCode) {
   modal.classList.add('show');
 
   try {
-    const response = await request(`${API_BASE}/links/${shortCode}`);
+    const response = await request(`${API_BASE}/${shortCode}`);
     const link = response.data || response;
 
     // 填充表单
@@ -1178,7 +1212,7 @@ $('#edit-form').addEventListener('submit', async (e) => {
   };
 
   try {
-    await request(`${API_BASE}/links/${shortCode}`, {
+    await request(`${API_BASE}/${shortCode}`, {
       method: 'PUT',
       body: JSON.stringify(data)
     });
@@ -1204,7 +1238,7 @@ async function deleteLink(shortCode) {
   }
 
   try {
-    await request(`${API_BASE}/links/${shortCode}`, {
+    await request(`${API_BASE}/${shortCode}`, {
       method: 'DELETE'
     });
 
@@ -1223,7 +1257,7 @@ async function restoreLink(shortCode) {
 
   try {
     // 通过更新状态为 active 来恢复
-    await request(`${API_BASE}/links/${shortCode}`, {
+    await request(`${API_BASE}/${shortCode}`, {
       method: 'PUT',
       body: JSON.stringify({
         status: 'active'
@@ -1261,7 +1295,7 @@ async function permanentDeleteLink(shortCode) {
 
   try {
     // 使用 permanent=true 参数进行硬删除
-    await request(`${API_BASE}/links/${shortCode}?permanent=true`, {
+    await request(`${API_BASE}/${shortCode}?permanent=true`, {
       method: 'DELETE'
     });
 

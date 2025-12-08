@@ -43,6 +43,7 @@ cdn_nodes:
     port_env: CDN_PRIVATE_PORT
     default_domain: localhost
     default_protocol: http
+    default_port: 8080
 
   # 联通CDN（中国联通用户）
   - id: unicom

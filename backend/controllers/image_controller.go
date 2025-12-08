@@ -9,6 +9,7 @@ import (
 	"imagebed/cache"
 	"imagebed/config"
 	"imagebed/database"
+	"imagebed/logger"
 	"imagebed/middleware"
 	"imagebed/models"
 	"imagebed/utils"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -181,16 +183,27 @@ func UploadImage(c *gin.Context) {
 	// 检查是否需要生成短链
 	// 优先级：请求参数 > 相册配置
 	generateShortLink := false
-	if enableShortLinkStr := c.PostForm("enableShortLink"); enableShortLinkStr != "" {
+	// enableShortLink 可以来自 Query 参数或 Form 参数
+	enableShortLinkStr := c.Query("enableShortLink")
+	if enableShortLinkStr == "" {
+		enableShortLinkStr = c.PostForm("enableShortLink")
+	}
+
+	if enableShortLinkStr != "" {
 		// 如果请求中明确指定了是否生成短链，使用请求参数
 		generateShortLink = enableShortLinkStr == "true" || enableShortLinkStr == "1"
+		logger.Info("从请求参数读取短链配置", zap.String("enableShortLink", enableShortLinkStr), zap.Bool("result", generateShortLink))
 	} else {
 		// 否则使用相册的配置
 		generateShortLink = album.EnableShortLink
+		logger.Info("从相册配置读取短链配置", zap.Bool("album.EnableShortLink", album.EnableShortLink), zap.Bool("result", generateShortLink))
 	}
+
+	logger.Info("短链接生成决策", zap.Bool("generateShortLink", generateShortLink))
 
 	// 生成短链
 	if generateShortLink {
+		logger.Info("开始生成短链接", zap.String("image_path", imageRecord.URL))
 		shortLinkClient := utils.NewShortLinkClient(cfg.ShortLinkBaseURL, cfg.ShortLinkAPIKey)
 
 		// 使用CDN路径而不是完整URL，让短链服务根据GeoIP分流
@@ -207,6 +220,7 @@ func UploadImage(c *gin.Context) {
 		}
 
 		if shortLink, err := shortLinkClient.CreateShortLink(shortLinkReq); err == nil {
+			logger.Info("短链接生成成功", zap.String("code", shortLink.Code), zap.String("url", shortLink.ShortURL))
 			// 保存短链信息到数据库
 			imageRecord.ShortLinkCode = shortLink.Code
 			db.Model(&imageRecord).Updates(map[string]interface{}{
@@ -215,7 +229,7 @@ func UploadImage(c *gin.Context) {
 			// 设置完整短链URL用于返回
 			imageRecord.ShortLinkURL = shortLink.ShortURL
 		} else {
-			fmt.Printf("生成短链失败: %v\n", err)
+			logger.Error("生成短链失败", zap.Error(err), zap.String("base_url", cfg.ShortLinkBaseURL))
 		}
 	}
 
@@ -331,9 +345,13 @@ func GetImages(c *gin.Context) {
 	cfg := config.GetConfig()
 	for i := range images {
 		images[i].URL = generateImageURL(images[i].UUID)
-		// 如果有短链代码，构造完整的短链URL
-		if images[i].ShortLinkCode != "" {
-			shortLinkHost := cfg.ShortLinkBaseURL
+		// 如果短链URL为空,但有短链代码,则构造完整的短链URL
+		// 优先使用数据库中已保存的短链URL
+		if images[i].ShortLinkURL == "" && images[i].ShortLinkCode != "" {
+			shortLinkHost := cfg.ShortLinkPublicURL
+			if shortLinkHost == "" {
+				shortLinkHost = cfg.ShortLinkBaseURL
+			}
 			if shortLinkHost == "" {
 				shortLinkHost = "http://localhost"
 			}
@@ -449,6 +467,20 @@ func DeleteImage(c *gin.Context) {
 	if err := os.Remove(imageRecord.FilePath); err != nil {
 		// 记录错误但继续删除数据库记录
 		fmt.Printf("删除文件失败: %v\n", err)
+	}
+
+	// 如果有短链,删除短链
+	if imageRecord.ShortLinkCode != "" {
+		cfg := config.GetConfig()
+		if cfg.ShortLinkEnabled {
+			shortLinkClient := utils.NewShortLinkClient(cfg.ShortLinkBaseURL, cfg.ShortLinkAPIKey)
+			if err := shortLinkClient.DeleteShortLink(imageRecord.ShortLinkCode); err != nil {
+				// 记录错误但继续删除图片
+				fmt.Printf("删除短链失败 %s: %v\n", imageRecord.ShortLinkCode, err)
+			} else {
+				fmt.Printf("✅ 已删除短链: %s\n", imageRecord.ShortLinkCode)
+			}
+		}
 	}
 
 	// 删除数据库记录
@@ -604,17 +636,36 @@ func BatchUpload(c *gin.Context) {
 
 		if batchResp, err := shortLinkClient.BatchCreateShortLinks(batchReq); err == nil {
 			fmt.Printf("批量生成短链成功，返回结果数量: %d\n", len(batchResp.Results))
+
+			// 确定公开访问 URL:如果配置了 PUBLIC_URL 则用它,否则用 BASE_URL
+			publicBaseURL := cfg.ShortLinkPublicURL
+			if publicBaseURL == "" {
+				publicBaseURL = cfg.ShortLinkBaseURL
+			}
+
 			// 更新图片记录的短链信息
 			for i, result := range batchResp.Results {
-				fmt.Printf("处理结果 %d: Success=%v, Code=%s, ShortURL=%s, Error=%s\n",
-					i, result.Success, result.Code, result.ShortURL, result.Error)
+				fmt.Printf("处理结果 %d: Success=%v, Code=%s\n", i, result.Success, result.Code)
 				if result.Success && i < len(uploadedImages) {
-					uploadedImages[i].ShortLinkCode = result.Code
-					uploadedImages[i].ShortLinkURL = result.ShortURL
-					fmt.Printf("更新图片 %d 短链: code=%s, url=%s\n", uploadedImages[i].ID, result.Code, result.ShortURL)
-					db.Model(&uploadedImages[i]).Updates(map[string]interface{}{
+					// 使用公开访问 URL 拼接完整短链
+					shortLinkURL := publicBaseURL + "/" + result.Code
+
+					fmt.Printf("更新图片 %d 短链: code=%s, url=%s\n",
+						uploadedImages[i].ID, result.Code, shortLinkURL)
+
+					// 保存短链代码和 URL
+					updateResult := db.Model(&uploadedImages[i]).Updates(map[string]interface{}{
 						"short_link_code": result.Code,
+						"short_link_url":  shortLinkURL,
 					})
+					if updateResult.Error != nil {
+						fmt.Printf("❌ 更新数据库失败: %v\n", updateResult.Error)
+					} else {
+						fmt.Printf("✅ 数据库更新成功，影响行数: %d\n", updateResult.RowsAffected)
+						// 更新成功后,同步更新内存对象
+						uploadedImages[i].ShortLinkCode = result.Code
+						uploadedImages[i].ShortLinkURL = shortLinkURL
+					}
 				} else {
 					fmt.Printf("跳过更新: Success=%v, 索引=%d, uploadedImages数量=%d\n",
 						result.Success, i, len(uploadedImages))
@@ -634,6 +685,23 @@ func BatchUpload(c *gin.Context) {
 
 		// 清除图片列表相关的缓存，确保上传后立即可见
 		clearImageListCache(albumID)
+
+		// 重新查询图片数据,确保返回最新的短链信息
+		var imageIDs []uint
+		for _, img := range uploadedImages {
+			imageIDs = append(imageIDs, img.ID)
+		}
+		if len(imageIDs) > 0 {
+			// 清空原数组，避免数据混乱
+			uploadedImages = []models.Image{}
+			queryResult := db.Where("id IN ?", imageIDs).Find(&uploadedImages)
+			fmt.Printf("重新查询了 %d 张图片的最新数据，查询影响行数: %d\n", len(uploadedImages), queryResult.RowsAffected)
+			// 打印所有图片的短链信息用于调试
+			for idx, img := range uploadedImages {
+				fmt.Printf("🔍 [%d] 返回给前端的图片: ID=%d, ShortLinkCode=%s, ShortLinkURL=%s\n",
+					idx, img.ID, img.ShortLinkCode, img.ShortLinkURL)
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{

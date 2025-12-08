@@ -8,11 +8,11 @@ local cjson = require "cjson.safe"
 local _M = {}
 
 local config = {
-    host = "127.0.0.1",
-    port = 3306,
-    database = "short_links",
-    user = "root",
-    password = "",
+    host = os.getenv("MYSQL_HOST") or "mysql",
+    port = tonumber(os.getenv("MYSQL_PORT")) or 3306,
+    database = os.getenv("MYSQL_DATABASE") or "short_links",
+    user = os.getenv("MYSQL_USER") or "root",
+    password = os.getenv("MYSQL_PASSWORD") or "",
     charset = "utf8mb4",
     timeout = 5000,          -- 连接超时（优化：增加）
     pool_size = 100,         -- 连接池大小（保持）
@@ -194,18 +194,28 @@ function _M.update_link(short_code, data)
 end
 
 -- 删除短链
-function _M.delete_link(short_code)
+function _M.delete_link(short_code, permanent)
     local db, err = connect()
     if not db then
         logger.error("MySQL连接失败: " .. err)
         return false, err
     end
 
-    local sql = string.format([[
-        UPDATE short_links
-        SET status = 'deleted', updated_at = NOW()
-        WHERE short_code = %s
-    ]], escape(short_code))
+    local sql
+    if permanent then
+        -- 永久删除:物理删除记录
+        sql = string.format([[
+            DELETE FROM short_links
+            WHERE short_code = %s
+        ]], escape(short_code))
+    else
+        -- 软删除:仅更新状态
+        sql = string.format([[
+            UPDATE short_links
+            SET status = 'deleted', updated_at = NOW()
+            WHERE short_code = %s
+        ]], escape(short_code))
+    end
 
     local res, err, errno, sqlstate = db:query(sql)
     keepalive(db)

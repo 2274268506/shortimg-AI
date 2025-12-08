@@ -56,7 +56,7 @@ type Image struct {
 	AllowDownload bool  `json:"allowDownload" gorm:"default:true"`         // 是否允许下载
 	// 短链字段
 	ShortLinkCode string         `json:"shortLinkCode" gorm:"type:varchar(50);index"` // 短链代码
-	ShortLinkURL  string         `json:"shortLinkUrl" gorm:"-"`                       // 短链完整URL（不存储）
+	ShortLinkURL  string         `json:"shortLinkUrl" gorm:"type:varchar(255)"`       // 短链完整URL
 	CreatedAt     time.Time      `json:"createdAt"`
 	UpdatedAt     time.Time      `json:"updatedAt"`
 	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`

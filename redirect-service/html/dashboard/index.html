@@ -656,6 +656,132 @@
       font-size: 14px;
       color: #333;
     }
+
+    /* 登录界面样式 */
+    #login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .login-box {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.4s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-header h2 {
+      font-size: 28px;
+      color: #333;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .login-header p {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .login-form-group {
+      margin-bottom: 24px;
+    }
+
+    .login-form-group label {
+      display: block;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .login-form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: all 0.3s;
+      outline: none;
+    }
+
+    .login-form-group input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    .login-footer {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .login-footer small {
+      color: #999;
+      font-size: 13px;
+    }
   </style>
 </head>
 
@@ -668,9 +794,18 @@
           <p>统一管理和监控您的所有短链接</p>
         </div>
         <div id="api-key-status" style="text-align: right;">
-          <small style="color: #999;">API Key: <span id="api-key-display">未设置</span></small>
+          <small style="color: #999;">已登录</small>
           <br>
-          <a href="/dashboard/setup.html" style="font-size: 12px; color: #1890ff;">设置 API Key</a>
+          <button onclick="logout()" style="
+            padding: 6px 16px; 
+            background: #f5f5f5; 
+            border: 1px solid #d9d9d9; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+          ">登出</button>
         </div>
       </div>
     </header>
@@ -1044,8 +1179,8 @@
     </div>
   </div>
 
-  <script src="dashboard.js"></script>
-  <script src="modal-functions.js"></script>
+  <script src="dashboard.js?v=20251209001338"></script>
+  <script src="modal-functions.js?v=20251209001338"></script>
   <script>
     console.log('🔍 HTML 内联脚本执行');
     console.log('🔍 showCreateModal 函数:', typeof showCreateModal);

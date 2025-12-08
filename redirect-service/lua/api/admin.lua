@@ -148,7 +148,11 @@ function _M.delete()
         return respond_error("缺少 short_code 参数")
     end
 
-    local ok, err = mysql_client.delete_link(short_code)
+    -- 检查是否永久删除
+    local args = ngx.req.get_uri_args()
+    local permanent = args.permanent == "true"
+
+    local ok, err = mysql_client.delete_link(short_code, permanent)
     if not ok then
         logger.error("删除短链失败: " .. err)
         return respond_error("删除失败: " .. err, 500)
@@ -157,9 +161,10 @@ function _M.delete()
     -- 清除缓存
     redis_client.del("link:" .. short_code)
 
-    logger.info("删除短链成功: " .. short_code)
+    logger.info("删除短链成功 (永久=" .. tostring(permanent) .. "): " .. short_code)
     return respond_success({
-        short_code = short_code
+        short_code = short_code,
+        permanent = permanent
     })
 end
 

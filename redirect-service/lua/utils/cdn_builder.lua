@@ -42,13 +42,24 @@ local function load_cdn_nodes()
     for _, node in ipairs(config.cdn_nodes) do
         local domain = os.getenv(node.domain_env) or node.default_domain
         local protocol = os.getenv(node.protocol_env) or node.default_protocol
-        local port = node.port_env and os.getenv(node.port_env)
+        
+        -- 读取端口配置（优先环境变量，其次 default_port）
+        local port = nil
+        if node.port_env then
+            local port_str = os.getenv(node.port_env)
+            if port_str and port_str ~= "" then
+                port = tonumber(port_str)
+            end
+        end
+        if not port and node.default_port then
+            port = tonumber(node.default_port)
+        end
         
         nodes[node.id] = {
             name = node.name,
             domain = domain,
             protocol = protocol,
-            port = port and tonumber(port) or nil
+            port = port
         }
     end
     
@@ -83,11 +94,14 @@ function _M.build_url(cdn_id, path)
     end
     
     -- 构建URL，处理端口
+    logger.info("构建URL - CDN ID: " .. cdn_id .. ", domain: " .. cdn.domain .. ", port: " .. tostring(cdn.port))
     local url = cdn.protocol .. "://" .. cdn.domain
     if cdn.port and cdn.port ~= 80 and cdn.port ~= 443 then
         url = url .. ":" .. cdn.port
+        logger.info("添加端口: " .. cdn.port)
     end
     url = url .. path
+    logger.info("最终URL: " .. url)
     
     return url
 end
@@ -127,6 +141,47 @@ end
 -- @param enable_geo_routing: 是否启用地理位置路由
 -- @return: { targets: [...], strategy: "..." }
 function _M.build_image_targets(path, enable_geo_routing)
+    -- 获取客户端IP
+    local client_ip = ngx.var.remote_addr or ngx.var.http_x_forwarded_for or ngx.var.http_x_real_ip
+    
+    -- 检查是否为私有IP（内网）
+    local function is_private_ip(ip)
+        if not ip then return false end
+        
+        -- 匹配 10.0.0.0/8
+        if ip:match("^10%.") then return true end
+        
+        -- 匹配 172.16.0.0/12
+        local second = ip:match("^172%.(%d+)%.")
+        if second then
+            local num = tonumber(second)
+            if num >= 16 and num <= 31 then return true end
+        end
+        
+        -- 匹配 192.168.0.0/16
+        if ip:match("^192%.168%.") then return true end
+        
+        -- 本地回环
+        if ip:match("^127%.") then return true end
+        if ip == "::1" then return true end
+        
+        return false
+    end
+    
+    -- 如果是内网IP，强制使用 private CDN
+    if is_private_ip(client_ip) then
+        local url = _M.build_url("private", path)
+        if url then
+            logger.info("检测到内网IP: " .. (client_ip or "unknown") .. "，使用 private CDN")
+            return {
+                targets = {
+                    { url = url }
+                },
+                strategy = "weight"
+            }
+        end
+    end
+    
     if not enable_geo_routing then
         -- 简单模式：只使用国内通用 CDN
         local url = _M.build_url("china", path)

@@ -43,6 +43,7 @@ local function generate_unique_code(prefix, length)
 
     repeat
         local code = (prefix or "") .. code_generator.generate(length or 12)
+        logger.info("尝试生成代码: " .. code)
         local exists, err = mysql_client.query("SELECT id FROM short_links WHERE short_code=?", {code})
         retry_count = retry_count + 1
 
@@ -51,7 +52,9 @@ local function generate_unique_code(prefix, length)
             return nil
         end
 
+        logger.info("查询结果: exists=" .. (exists and #exists or "nil"))
         if not exists or #exists == 0 then
+            logger.info("找到唯一代码: " .. code)
             return code
         end
 
@@ -64,12 +67,19 @@ end
 
 -- 创建图床短链（V2 - 使用高级路由）
 function _M.create()
+    ngx.log(ngx.ERR, "=== V2 API create 开始 ===")
     local data, err = read_body()
-    if not data then return respond_error(err) end
+    if not data then
+        ngx.log(ngx.ERR, "读取请求体失败: " .. (err or "unknown"))
+        return respond_error(err)
+    end
+
+    ngx.log(ngx.ERR, "请求数据: " .. cjson.encode(data))
 
     -- 必需字段
     local image_path = data.image_path
     if not image_path then
+        ngx.log(ngx.ERR, "缺少 image_path")
         return respond_error("缺少 image_path 字段")
     end
 
@@ -80,7 +90,9 @@ function _M.create()
 
     -- 生成唯一代码
     if not code then
+        ngx.log(ngx.ERR, "开始生成唯一代码...")
         code = generate_unique_code("img-", 12)
+        ngx.log(ngx.ERR, "生成代码结果: " .. (code or "NIL"))
         if not code then
             return respond_error("生成唯一代码失败，请稍后重试", 500)
         end
@@ -287,26 +299,314 @@ function _M.create_generic()
     })
 end
 
+-- 获取短链列表
+function _M.list()
+    local args = ngx.req.get_uri_args()
+    local page = tonumber(args.page) or 1
+    local limit = tonumber(args.limit) or 20
+    local service_type = args.service_type
+
+    -- 计算偏移量
+    local offset = (page - 1) * limit
+
+    -- 构建查询条件
+    local where_clause = ""
+    local params = {}
+
+    if service_type and service_type ~= "" then
+        where_clause = "WHERE service_type = ?"
+        table.insert(params, service_type)
+    end
+
+    -- 查询总数
+    local count_sql = "SELECT COUNT(*) as total FROM short_links " .. where_clause
+    local count_result, err = mysql_client.query(count_sql, params)
+
+    if err then
+        logger.error("查询短链总数失败: " .. err)
+        return respond_error("查询失败: " .. err, 500)
+    end
+
+    local total = (count_result and count_result[1] and count_result[1].total) or 0
+
+    -- 查询列表
+    local query_params = {}
+    for _, p in ipairs(params) do
+        table.insert(query_params, p)
+    end
+    table.insert(query_params, limit)
+    table.insert(query_params, offset)
+
+    local list_sql = [[
+        SELECT short_code, strategy, status, service_type,
+               created_at, updated_at, visit_count
+        FROM short_links
+    ]] .. where_clause .. " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+
+    local links, err = mysql_client.query(list_sql, query_params)
+
+    if err then
+        logger.error("查询短链列表失败: " .. err)
+        return respond_error("查询失败: " .. err, 500)
+    end
+
+    return respond_success({
+        links = links or {},
+        total = total,
+        page = page,
+        limit = limit,
+        total_pages = math.ceil(total / limit)
+    })
+end
+
+-- 获取单个短链详情
+function _M.get()
+    local uri = ngx.var.uri
+    local code = uri:match("^/api/v2/imagebed/([^/]+)$")
+    
+    if not code then
+        return respond_error("缺少短链代码", 400)
+    end
+
+    logger.info("查询短链详情: " .. code)
+
+    -- 先尝试从 Redis 获取
+    local cache_key = "short_link:" .. code
+    local cached = redis_client.get(cache_key)
+    
+    if cached then
+        local data = cjson.decode(cached)
+        if data then
+            logger.info("从缓存获取短链: " .. code)
+            return respond_success(data)
+        end
+    end
+
+    -- 从数据库查询
+    local result, err = mysql_client.query(
+        "SELECT * FROM short_links WHERE short_code=?",
+        {code}
+    )
+
+    if err then
+        logger.error("查询短链失败: " .. err)
+        return respond_error("查询失败: " .. err, 500)
+    end
+
+    if not result or #result == 0 then
+        return respond_error("短链不存在", 404)
+    end
+
+    local link = result[1]
+    
+    -- 解析 targets JSON
+    if link.targets then
+        local targets_data = cjson.decode(link.targets)
+        if targets_data then
+            link.targets = targets_data
+        end
+    end
+
+    -- 缓存到 Redis
+    redis_client.setex(cache_key, 3600, cjson.encode(link))
+
+    return respond_success(link)
+end
+
+-- 更新短链
+function _M.update()
+    local uri = ngx.var.uri
+    local code = uri:match("^/api/v2/imagebed/([^/]+)$")
+    
+    if not code then
+        return respond_error("缺少短链代码", 400)
+    end
+
+    local data, err = read_body()
+    if not data then
+        return respond_error(err, 400)
+    end
+
+    logger.info("更新短链: " .. code)
+
+    -- 构建更新 SQL
+    local updates = {}
+    local params = {}
+
+    if data.strategy then
+        table.insert(updates, "strategy = ?")
+        table.insert(params, data.strategy)
+    end
+
+    if data.targets then
+        table.insert(updates, "targets = ?")
+        table.insert(params, cjson.encode(data.targets))
+    end
+
+    if data.status then
+        table.insert(updates, "status = ?")
+        table.insert(params, data.status)
+    end
+
+    if #updates == 0 then
+        return respond_error("没有需要更新的字段", 400)
+    end
+
+    table.insert(updates, "updated_at = NOW()")
+    table.insert(params, code)
+
+    local sql = "UPDATE short_links SET " .. table.concat(updates, ", ") .. " WHERE short_code = ?"
+
+    local result, err = mysql_client.query(sql, params)
+
+    if err then
+        logger.error("更新短链失败: " .. err)
+        return respond_error("更新失败: " .. err, 500)
+    end
+
+    -- 清除缓存
+    redis_client.del("short_link:" .. code)
+
+    logger.info("短链更新成功: " .. code)
+    return respond_success({
+        short_code = code,
+        message = "更新成功"
+    })
+end
+
+-- 删除短链
+function _M.delete()
+    local uri = ngx.var.uri
+    local code = uri:match("^/api/v2/imagebed/([^/]+)$")
+    
+    if not code then
+        return respond_error("缺少短链代码", 400)
+    end
+
+    -- 检查是否永久删除
+    local args = ngx.req.get_uri_args()
+    local permanent = args.permanent == "true"
+
+    logger.info("删除短链请求 (永久=" .. tostring(permanent) .. "): " .. code)
+
+    local sql
+    if permanent then
+        -- 永久删除:物理删除记录
+        sql = "DELETE FROM short_links WHERE short_code = ?"
+    else
+        -- 软删除:仅更新状态
+        sql = "UPDATE short_links SET status = 'deleted', updated_at = NOW() WHERE short_code = ?"
+    end
+
+    local result, err = mysql_client.query(sql, {code})
+
+    if err then
+        logger.error("删除短链失败: " .. err)
+        return respond_error("删除失败: " .. err, 500)
+    end
+
+    -- 删除 Redis 缓存
+    redis_client.del("short_link:" .. code)
+
+    logger.info("短链已删除 (永久=" .. tostring(permanent) .. "): " .. code)
+    return respond_success({
+        code = code,
+        permanent = permanent,
+        message = "短链已删除"
+    })
+end
+
+-- 获取统计概览
+function _M.stats_overview()
+    logger.info("查询统计概览")
+
+    -- 查询总链接数
+    local total_sql = "SELECT COUNT(*) as total FROM short_links WHERE status != 'deleted'"
+    local total_result, err = mysql_client.query(total_sql)
+    
+    if err then
+        logger.error("查询总链接数失败: " .. err)
+        return respond_error("查询失败: " .. err, 500)
+    end
+    
+    local total_links = (total_result and total_result[1] and total_result[1].total) or 0
+
+    -- 查询总访问次数
+    local visits_sql = "SELECT SUM(visit_count) as total_visits FROM short_links"
+    local visits_result, err = mysql_client.query(visits_sql)
+    
+    if err then
+        logger.error("查询总访问次数失败: " .. err)
+        return respond_error("查询失败: " .. err, 500)
+    end
+    
+    local total_visits = (visits_result and visits_result[1] and visits_result[1].total_visits) or 0
+
+    -- 查询今日访问（简化版，使用 Redis 或其他方式可以更精确）
+    local today_visits = 0  -- 暂时返回0，后续可以从访问日志表获取
+
+    -- 查询独立访客数（简化版）
+    local unique_visitors = math.floor(total_visits * 0.7)  -- 估算值
+
+    return respond_success({
+        total_links = tonumber(total_links),
+        total_visits = tonumber(total_visits),
+        today_visits = tonumber(today_visits),
+        unique_visitors = tonumber(unique_visitors)
+    })
+end
+
 -- 路由处理函数（入口）
 function _M.handle()
     local method = ngx.var.request_method
     local uri = ngx.var.uri
 
-    if method ~= "POST" then
-        return respond_error("仅支持 POST 请求", 405)
-    end
-
-    -- V2 图床 API 路由
-    if uri:match("^/api/v2/imagebed/create$") then
-        return _M.create()
-    elseif uri:match("^/api/v2/imagebed/batch$") then
-        return _M.batch_create()
+    -- GET 请求
+    if method == "GET" then
+        -- GET /api/v2/imagebed/stats/overview - 统计概览
+        if uri == "/api/v2/imagebed/stats/overview" then
+            return _M.stats_overview()
+        -- GET /api/v2/imagebed - 获取列表
+        elseif uri == "/api/v2/imagebed" then
+            return _M.list()
+        -- GET /api/v2/imagebed/:code - 获取单个详情
+        elseif uri:match("^/api/v2/imagebed/[^/]+$") then
+            return _M.get()
+        else
+            return respond_error("未知的 API 端点", 404)
+        end
     
-    -- V2 通用短链 API 路由
-    elseif uri:match("^/api/v2/generic/create$") then
-        return _M.create_generic()
+    -- PUT 请求 - 更新
+    elseif method == "PUT" then
+        if uri:match("^/api/v2/imagebed/[^/]+$") then
+            return _M.update()
+        else
+            return respond_error("未知的 API 端点", 404)
+        end
+    
+    -- DELETE 请求 - 删除
+    elseif method == "DELETE" then
+        if uri:match("^/api/v2/imagebed/[^/]+$") then
+            return _M.delete()
+        else
+            return respond_error("未知的 API 端点", 404)
+        end
+    
+    -- POST 请求 - 创建
+    elseif method == "POST" then
+        -- V2 图床 API 路由
+        if uri:match("^/api/v2/imagebed/create$") then
+            return _M.create()
+        elseif uri:match("^/api/v2/imagebed/batch$") then
+            return _M.batch_create()
+        -- V2 通用短链 API 路由
+        elseif uri:match("^/api/v2/generic/create$") then
+            return _M.create_generic()
+        else
+            return respond_error("未知的 API 端点", 404)
+        end
     else
-        return respond_error("未知的 API 端点", 404)
+        return respond_error("不支持的请求方法", 405)
     end
 end
 

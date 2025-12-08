@@ -98,10 +98,11 @@ type Config struct {
 	LogMaxBackups int
 
 	// 短链服务配置
-	ShortLinkEnabled bool   // 是否启用短链功能
-	ShortLinkBaseURL string // 短链服务地址
-	ShortLinkExpire  int64  // 短链默认过期时间（秒），0表示永不过期
-	ShortLinkAPIKey  string // 短链服务API密钥
+	ShortLinkEnabled   bool   // 是否启用短链功能
+	ShortLinkBaseURL   string // 短链服务 API 地址(后端调用用)
+	ShortLinkPublicURL string // 短链公开访问地址(浏览器访问用)
+	ShortLinkExpire    int64  // 短链默认过期时间（秒），0表示永不过期
+	ShortLinkAPIKey    string // 短链服务API密钥
 
 	// CORS 跨域配置
 	CORSEnabled      bool     // 是否启用CORS
@@ -235,10 +236,11 @@ func LoadConfig() *Config {
 		LogMaxBackups: getEnvAsInt("LOG_MAX_BACKUPS", 10),
 
 		// 短链服务配置
-		ShortLinkEnabled: getEnvAsBool("SHORT_LINK_ENABLED", false),
-		ShortLinkBaseURL: getEnv("SHORT_LINK_BASE_URL", "http://localhost"),
-		ShortLinkExpire:  getEnvAsInt64("SHORT_LINK_EXPIRE", 0),
-		ShortLinkAPIKey:  getEnv("SHORT_LINK_API_KEY", ""),
+		ShortLinkEnabled:   getEnvAsBool("SHORT_LINK_ENABLED", true),
+		ShortLinkBaseURL:   getEnv("SHORT_LINK_BASE_URL", "http://localhost:8081"),
+		ShortLinkPublicURL: getEnv("SHORT_LINK_PUBLIC_URL", ""), // 默认为空,使用 ShortLinkBaseURL
+		ShortLinkExpire:    getEnvAsInt64("SHORT_LINK_EXPIRE", 0),
+		ShortLinkAPIKey:    getEnv("SHORT_LINK_API_KEY", ""),
 
 		// CORS 跨域配置
 		CORSEnabled:      getEnvAsBool("CORS_ENABLED", true),

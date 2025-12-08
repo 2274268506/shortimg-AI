@@ -154,6 +154,10 @@ func (c *ShortLinkClient) BatchCreateShortLinks(req *BatchShortLinkRequest) (*Ba
 		return nil, fmt.Errorf("序列化请求失败: %w", err)
 	}
 
+	// 添加调试日志
+	fmt.Printf("批量短链请求数据: %s\n", string(jsonData))
+	fmt.Printf("批量短链请求URL: %s\n", c.BaseURL+"/api/v2/imagebed/batch")
+
 	// 使用 V2 API 端点
 	httpReq, err := http.NewRequest("POST", c.BaseURL+"/api/v2/imagebed/batch", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -165,20 +169,28 @@ func (c *ShortLinkClient) BatchCreateShortLinks(req *BatchShortLinkRequest) (*Ba
 		httpReq.Header.Set("X-API-Key", c.APIKey)
 	}
 
+	fmt.Printf("发送批量短链请求...\n")
 	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
+		fmt.Printf("批量短链请求失败: %v\n", err)
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 	defer resp.Body.Close()
+
+	fmt.Printf("收到响应，状态码: %d\n", resp.StatusCode)
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("读取响应失败: %w", err)
 	}
 
+	// 添加调试日志
+	fmt.Printf("批量短链 API 响应状态码: %d\n", resp.StatusCode)
+	fmt.Printf("批量短链 API 响应体: %s\n", string(body))
+
 	var result BatchShortLinkResponse
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+		return nil, fmt.Errorf("解析响应失败: %w (响应体: %s)", err, string(body))
 	}
 
 	if !result.Success {
@@ -250,6 +262,45 @@ func (c *ShortLinkClient) UpdateMetadata(code string, metadata map[string]interf
 
 	if !result.Success {
 		return fmt.Errorf("更新元数据失败: %s", result.Error)
+	}
+
+	return nil
+}
+
+// DeleteShortLink 删除短链接
+func (c *ShortLinkClient) DeleteShortLink(code string) error {
+	if code == "" {
+		return fmt.Errorf("短链接代码不能为空")
+	}
+
+	url := fmt.Sprintf("%s/api/v2/imagebed/%s", c.BaseURL, code)
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %w", err)
+	}
+
+	if c.APIKey != "" {
+		req.Header.Set("X-API-Key", c.APIKey)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("读取响应失败: %w", err)
+	}
+
+	var result ShortLinkResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return fmt.Errorf("解析响应失败: %w", err)
+	}
+
+	if !result.Success {
+		return fmt.Errorf("删除短链接失败: %s", result.Error)
 	}
 
 	return nil

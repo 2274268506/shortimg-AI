@@ -578,6 +578,9 @@ const handleDeleteImage = async (id) => {
 
 // 复制短链
 const copyShortLink = async (image) => {
+  console.log('🔍 复制短链 - 图片对象:', image)
+  console.log('🔍 短链URL:', image.shortLinkUrl)
+  
   if (!image.shortLinkUrl) {
     ElMessage.warning('该图片暂无短链')
     return
