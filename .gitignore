@@ -31,6 +31,20 @@ vendor/
 *.tmp
 *.temp
 
+# 忽略压缩包和大文件
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.rar
+*.7z
+*.gz
+*.bz2
+*.xz
+*.iso
+*.dmg
+*.pkg
+
 # Node.js
 node_modules/
 npm-debug.log*
