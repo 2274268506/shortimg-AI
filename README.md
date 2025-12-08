@@ -229,7 +229,7 @@
 - 至少 2GB 可用内存
 - 端口 80、443、8080、8081、3306、6379 未被占用
 
-### 一键部署
+### 一键部署（不支持）
 
 ```bash
 # 1. 克隆项目
@@ -569,7 +569,7 @@ docker exec shortlink-redis-1 redis-cli SAVE
 
 ## 👥 联系方式
 
-- 作者: DXY
+- 作者: 
 - 邮箱: support@example.com
 - 项目主页: https://github.com/yourusername/shortimg-ai
 - 问题反馈: https://github.com/yourusername/shortimg-ai/issues
@@ -592,6 +592,6 @@ docker exec shortlink-redis-1 redis-cli SAVE
 
 **如果觉得有帮助，请给个 ⭐ Star！**
 
-Made with ❤️ by DXY
+Made with ❤️ by 
 
 </div>
