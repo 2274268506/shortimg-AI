@@ -26,6 +26,18 @@ scrape_configs:
     scrape_interval: 10s
     scrape_timeout: 5s
 
+  # 短链重定向服务
+  - job_name: 'shortlink-service'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'shortlink-openresty'
+
   # Prometheus 自监控
   - job_name: 'prometheus'
     static_configs:

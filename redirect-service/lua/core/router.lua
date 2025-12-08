@@ -209,47 +209,29 @@ local function verify_token(token, short_code)
     return true
 end
 
--- 选择目标服务器
+-- 选择目标服务器（统一使用高级路由引擎）
 local function select_target(link_data, client_info)
     local targets = link_data.targets
     if not targets or #targets == 0 then
         return nil
     end
 
-    -- 过滤健康的服务器
+    -- 构建完整URL列表（仅处理 url 字段）
     local healthy_targets = {}
     for _, target in ipairs(targets) do
-        -- 生成完整URL（支持三种方式）
-        local target_url
+        -- 统一方式：仅支持完整URL
+        -- 如果使用 cdn + path，应该在创建短链时就生成完整URL
         if target.url then
-            -- 方式1: 直接使用完整URL（通用短链）
-            target_url = target.url
-        elseif target.cdn and target.path then
-            -- 方式2: 使用指定CDN标识 + 路径
-            target_url = config.get_cdn_url(target.cdn, target.path)
-        elseif target.path then
-            -- 方式3: 只有路径，根据GeoIP自动选择CDN（图床等服务）
-            local client_ip = client_info.ip or ngx.var.remote_addr
-            local cdn_name = config.select_cdn_by_geo(client_ip)
-            logger.info("GeoIP分流: IP=" .. client_ip .. " CDN=" .. cdn_name)
-            target_url = config.get_cdn_url(cdn_name, target.path)
-        else
-            logger.warn("Invalid target config: missing url or path")
-            goto continue
-        end
-
-        -- 健康检查（已禁用）
-        -- if health_checker.is_healthy(target_url) then
-            -- 创建带完整URL的target副本
+            -- 创建target副本
             local healthy_target = {}
             for k, v in pairs(target) do
                 healthy_target[k] = v
             end
-            healthy_target.url = target_url
             table.insert(healthy_targets, healthy_target)
-        -- end
-
-        ::continue::
+        else
+            logger.warn("Invalid target config: missing url field. Target should contain complete URL.")
+            logger.warn("If using CDN routing, please generate full URL when creating short link.")
+        end
     end
 
     if #healthy_targets == 0 then
@@ -258,21 +240,15 @@ local function select_target(link_data, client_info)
         if link_data.fallback_url then
             return link_data.fallback_url
         end
-        -- 如果没有降级URL，尝试使用第一个目标（忽略健康检查）
-        if #targets > 0 then
-            local first_target = targets[1]
-            if first_target.url then
-                return first_target.url
-            elseif first_target.cdn and first_target.path then
-                local config = require "conf.config"
-                return config.get_cdn_url(first_target.cdn, first_target.path)
-            end
-        end
         return nil
     end
 
-    -- 根据策略选择目标
-    local strategy_name = link_data.strategy or "round_robin"
+    -- 使用高级路由策略选择目标
+    -- 支持策略: geo, ip, asn, hash, weight, round_robin
+    -- 支持组合策略: geo+asn, ip+weight 等
+    local strategy_name = link_data.strategy or "weight"
+    logger.info("Using routing strategy: " .. strategy_name)
+    
     local target = strategies.select(strategy_name, healthy_targets, client_info)
 
     return target and target.url or healthy_targets[1].url

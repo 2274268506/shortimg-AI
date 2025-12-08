@@ -13,7 +13,7 @@ services:
       - ./conf/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
       - ./conf/upstream.conf:/usr/local/openresty/nginx/conf/upstream.conf
       - ./conf/config.lua:/usr/local/openresty/nginx/conf/config.lua
-      - ./conf/https.conf:/usr/local/openresty/nginx/conf/https.conf
+      # https.conf 不需要 - 如需容器内 HTTPS，使用外部 Nginx 反向代理更安全
       - ./lua:/usr/local/openresty/nginx/lua
       - ./lib:/usr/local/openresty/site/lualib/resty
       - ./lib/prometheus.lua:/usr/local/openresty/site/lualib/prometheus.lua

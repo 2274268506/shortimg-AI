@@ -77,6 +77,11 @@ services:
       # 用户管理
       ALLOW_REGISTRATION: "true"
 
+      # 默认管理员账户配置
+      DEFAULT_ADMIN_USERNAME: admin
+      DEFAULT_ADMIN_PASSWORD: admin123
+      DEFAULT_ADMIN_EMAIL: admin@example.com
+
       # 文件上传
       UPLOAD_PATH: /app/uploads
       MAX_FILE_SIZE: 100
@@ -91,6 +96,12 @@ services:
       LOG_MAX_SIZE: 100
       LOG_MAX_AGE: 30
       LOG_MAX_BACKUPS: 10
+
+      # CORS 跨域配置
+      CORS_ENABLED: "true"
+      CORS_ALLOW_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:3000,http://127.0.0.1:5173
+      CORS_ALLOW_METHODS: GET,POST,PUT,PATCH,DELETE,OPTIONS
+      CORS_ALLOW_HEADERS: Origin,Content-Type,Accept,Authorization
     volumes:
       - backend_test_uploads:/app/uploads
       - backend_test_logs:/app/logs

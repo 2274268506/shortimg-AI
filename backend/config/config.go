@@ -110,6 +110,11 @@ type Config struct {
 	CORSAllowHeaders []string // 允许的请求头
 	CORSMaxAge       int      // 预检请求缓存时间（小时）
 
+	// 默认管理员账户配置
+	DefaultAdminUsername string // 默认管理员用户名
+	DefaultAdminPassword string // 默认管理员密码
+	DefaultAdminEmail    string // 默认管理员邮箱
+
 	// 旧字段保持兼容性
 	AllowedReferers []string
 	DatabasePath    string // 兼容旧配置
@@ -241,6 +246,11 @@ func LoadConfig() *Config {
 		CORSAllowMethods: getEnvAsSlice("CORS_ALLOW_METHODS", "GET,POST,PUT,PATCH,DELETE,OPTIONS"),
 		CORSAllowHeaders: getEnvAsSlice("CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization"),
 		CORSMaxAge:       getEnvAsInt("CORS_MAX_AGE", 12),
+
+		// 默认管理员账户配置
+		DefaultAdminUsername: getEnv("DEFAULT_ADMIN_USERNAME", "admin"),
+		DefaultAdminPassword: getEnv("DEFAULT_ADMIN_PASSWORD", "admin123"),
+		DefaultAdminEmail:    getEnv("DEFAULT_ADMIN_EMAIL", "admin@example.com"),
 
 		// 兼容旧配置
 		AllowedReferers: []string{"localhost", "127.0.0.1"},

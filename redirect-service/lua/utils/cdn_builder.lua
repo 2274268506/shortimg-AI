@@ -1,0 +1,218 @@
+-- utils/cdn_builder.lua
+-- CDN URL 构建工具
+-- 用于在创建短链时生成完整的 CDN URL
+-- 所有 CDN 配置从 routing_rules.yaml 读取
+
+local yaml = require "lyaml"
+local logger = require "utils.logger"
+local io = require "io"
+
+local _M = {}
+
+-- 缓存 CDN 配置
+local cdn_nodes_cache = nil
+local cache_time = 0
+local cache_ttl = 300  -- 5分钟缓存
+
+-- 从 routing_rules.yaml 加载 CDN 节点配置
+local function load_cdn_nodes()
+    local now = ngx.time()
+    if cdn_nodes_cache and (now - cache_time) < cache_ttl then
+        return cdn_nodes_cache
+    end
+    
+    local config_path = "/usr/local/openresty/nginx/lua/routing_rules.yaml"
+    local file = io.open(config_path, "r")
+    if not file then
+        logger.error("无法打开配置文件: " .. config_path)
+        return {}
+    end
+    
+    local content = file:read("*all")
+    file:close()
+    
+    local config = yaml.load(content)
+    if not config or not config.cdn_nodes then
+        logger.error("无效的配置文件格式")
+        return {}
+    end
+    
+    -- 构建 CDN 节点映射表
+    local nodes = {}
+    for _, node in ipairs(config.cdn_nodes) do
+        local domain = os.getenv(node.domain_env) or node.default_domain
+        local protocol = os.getenv(node.protocol_env) or node.default_protocol
+        local port = node.port_env and os.getenv(node.port_env)
+        
+        nodes[node.id] = {
+            name = node.name,
+            domain = domain,
+            protocol = protocol,
+            port = port and tonumber(port) or nil
+        }
+    end
+    
+    cdn_nodes_cache = nodes
+    cache_time = now
+    
+    logger.info("已加载 " .. #config.cdn_nodes .. " 个 CDN 节点配置")
+    return nodes
+end
+
+-- 生成单个 CDN 的完整 URL
+-- @param cdn_id: CDN 标识（如 "telecom", "unicom", "overseas"）
+-- @param path: 资源路径（如 "/uploads/2024/image.jpg"）
+-- @return: 完整 URL
+function _M.build_url(cdn_id, path)
+    local nodes = load_cdn_nodes()
+    local cdn = nodes[cdn_id]
+    
+    if not cdn then
+        logger.warn("未找到 CDN 节点: " .. cdn_id .. "，使用 backup")
+        cdn = nodes.backup or nodes.china
+    end
+    
+    if not cdn then
+        logger.error("无可用的 CDN 节点")
+        return nil
+    end
+    
+    -- 确保路径以 / 开头
+    if not path:match("^/") then
+        path = "/" .. path
+    end
+    
+    -- 构建URL，处理端口
+    local url = cdn.protocol .. "://" .. cdn.domain
+    if cdn.port and cdn.port ~= 80 and cdn.port ~= 443 then
+        url = url .. ":" .. cdn.port
+    end
+    url = url .. path
+    
+    return url
+end
+
+-- 为所有配置的 CDN 生成 targets 数组
+-- @param path: 资源路径
+-- @param options: 可选配置
+--   - cdns: CDN 列表，如 {"telecom", "unicom", "overseas"}
+--   - attributes: 为每个 CDN 添加的额外属性（region, isp, weight 等）
+-- @return: targets 数组
+function _M.build_targets(path, options)
+    options = options or {}
+    local cdns = options.cdns or {"china"} -- 默认使用国内通用 CDN
+    local targets = {}
+    
+    for i, cdn_id in ipairs(cdns) do
+        local url = _M.build_url(cdn_id, path)
+        if url then
+            local target = { url = url }
+            
+            -- 添加额外属性
+            if options.attributes and options.attributes[cdn_id] then
+                for k, v in pairs(options.attributes[cdn_id]) do
+                    target[k] = v
+                end
+            end
+            
+            table.insert(targets, target)
+        end
+    end
+    
+    return targets
+end
+
+-- 为图床服务生成多 CDN targets（推荐用法）
+-- @param path: 图片路径
+-- @param enable_geo_routing: 是否启用地理位置路由
+-- @return: { targets: [...], strategy: "..." }
+function _M.build_image_targets(path, enable_geo_routing)
+    if not enable_geo_routing then
+        -- 简单模式：只使用国内通用 CDN
+        local url = _M.build_url("china", path)
+        if not url then
+            logger.error("无法生成 CDN URL")
+            return nil
+        end
+        
+        return {
+            targets = {
+                { url = url }
+            },
+            strategy = "weight"
+        }
+    end
+    
+    -- 高级模式：多 CDN + 地理位置+运营商路由
+    local telecom_url = _M.build_url("telecom", path)
+    local unicom_url = _M.build_url("unicom", path)
+    local mobile_url = _M.build_url("mobile", path)
+    local overseas_url = _M.build_url("overseas", path)
+    local backup_url = _M.build_url("backup", path)
+    
+    local targets = {}
+    
+    -- 电信 CDN
+    if telecom_url then
+        table.insert(targets, {
+            url = telecom_url,
+            isp = "telecom",
+            weight = 100
+        })
+    end
+    
+    -- 联通 CDN
+    if unicom_url then
+        table.insert(targets, {
+            url = unicom_url,
+            isp = "unicom",
+            weight = 100
+        })
+    end
+    
+    -- 移动 CDN
+    if mobile_url then
+        table.insert(targets, {
+            url = mobile_url,
+            isp = "mobile",
+            weight = 100
+        })
+    end
+    
+    -- 海外 CDN
+    if overseas_url then
+        table.insert(targets, {
+            url = overseas_url,
+            region = "overseas",
+            weight = 100
+        })
+    end
+    
+    -- 备用 CDN（降级）
+    if backup_url then
+        table.insert(targets, {
+            url = backup_url,
+            weight = 50
+        })
+    end
+    
+    return {
+        targets = targets,
+        strategy = "geo+weight",
+        fallback_url = backup_url
+    }
+end
+
+-- 为通用短链生成配置（单个URL）
+-- @param url: 完整的目标 URL
+-- @return: { targets: [...] }
+function _M.build_generic_target(url)
+    return {
+        targets = {
+            { url = url }
+        },
+        strategy = "weight"
+    }
+end
+
+return _M

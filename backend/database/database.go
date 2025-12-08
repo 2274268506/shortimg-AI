@@ -79,15 +79,17 @@ func InitDatabase() error {
 	DB.Model(&models.User{}).Count(&userCount)
 	var adminUserID uint = 1
 	if userCount == 0 {
+		cfg := config.GetConfig()
 		adminUser := models.User{
-			Username: "admin",
-			Email:    "admin@example.com",
+			Username: cfg.DefaultAdminUsername,
+			Email:    cfg.DefaultAdminEmail,
 			Role:     "admin",
 		}
-		adminUser.HashPassword("admin123") // 默认密码：admin123
+		adminUser.HashPassword(cfg.DefaultAdminPassword)
 		DB.Create(&adminUser)
 		adminUserID = adminUser.ID
-		log.Println("已创建默认管理员账号 - 用户名: admin, 密码: admin123")
+		log.Printf("✅ 已创建默认管理员账号 - 用户名: %s, 邮箱: %s", cfg.DefaultAdminUsername, cfg.DefaultAdminEmail)
+		log.Printf("⚠️  请立即修改默认密码！")
 	} else {
 		// 获取第一个管理员用户的ID
 		var adminUser models.User

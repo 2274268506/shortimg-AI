@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
   tzdata \
   libwebp7 \
   wget \
+  curl \
   && rm -rf /var/lib/apt/lists/*
 
 ENV TZ=Asia/Shanghai
