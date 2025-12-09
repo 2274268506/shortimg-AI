@@ -49,8 +49,15 @@ RUN mkdir -p /usr/local/openresty/nginx/lua/api \
 # 设置工作目录
 WORKDIR /usr/local/openresty/nginx
 
+# 安装 Redis CLI（用于 API Key 注册）
+RUN apk add --no-cache redis
+
+# 复制入口脚本
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # 暴露端口
 EXPOSE 80 443
 
 # 启动命令
-CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
+CMD ["/docker-entrypoint.sh"]

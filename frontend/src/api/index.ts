@@ -262,3 +262,34 @@ export const changePassword = (data: ChangePasswordRequest) => {
   return request.post<ApiResponse<void>>('/profile/change-password', data)
 }
 
+// ========== 短链管理相关 API ==========
+
+// 生成短链
+export const generateShortLink = (imageId: number) => {
+  return request.post<ApiResponse<{
+    message: string
+    short_link_code: string
+    short_link_url: string
+  }>>(`/images/${imageId}/shortlink`)
+}
+
+// 删除短链（解绑）
+export const unbindShortLink = (imageId: number, permanent: boolean = false) => {
+  return request.delete<ApiResponse<{
+    message: string
+  }>>(`/images/${imageId}/shortlink${permanent ? '?permanent=true' : ''}`)
+}
+
+// 转移短链到另一张图片
+export const transferShortLink = (oldImageId: number, newImageIdOrUuid: number | string) => {
+  const body = typeof newImageIdOrUuid === 'string' 
+    ? { target_uuid: newImageIdOrUuid }
+    : { new_image_id: newImageIdOrUuid }
+  
+  return request.put<ApiResponse<{
+    message: string
+    short_link_code: string
+    old_image_id: number
+    new_image_id: number
+  }>>(`/images/${oldImageId}/shortlink`, body)
+}

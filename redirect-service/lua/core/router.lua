@@ -209,49 +209,81 @@ local function verify_token(token, short_code)
     return true
 end
 
--- 选择目标服务器（统一使用高级路由引擎）
+-- 选择目标服务器（根据 service_type 区分处理）
 local function select_target(link_data, client_info)
     local targets = link_data.targets
-    if not targets or #targets == 0 then
+    local service_type = link_data.service_type
+    
+    if not targets then
         return nil
     end
 
-    -- 构建完整URL列表（仅处理 url 字段）
-    local healthy_targets = {}
-    for _, target in ipairs(targets) do
-        -- 统一方式：仅支持完整URL
-        -- 如果使用 cdn + path，应该在创建短链时就生成完整URL
-        if target.url then
-            -- 创建target副本
-            local healthy_target = {}
-            for k, v in pairs(target) do
-                healthy_target[k] = v
+    -- 根据 service_type 判断处理方式：
+    -- - imagebed（图片）、file（文件）、video（视频）: targets 是路径字符串，需要动态拼接CDN域名
+    -- - general/generic（通用）: targets 是完整URL数组，直接使用
+    
+    if service_type == "imagebed" or service_type == "file" or service_type == "video" then
+        -- 图床类短链：targets 是路径字符串（如 "/i/uuid"）
+        -- 根据分流规则选择CDN节点，然后拼接域名和路径
+        if type(targets) == "string" then
+            local cdn_builder = require "utils.cdn_builder"
+            
+            -- 使用策略确定是否启用地理路由
+            local enable_geo_routing = (link_data.strategy == "geo")
+            
+            -- 调用 CDN 构建器生成完整URL列表
+            local link_config = cdn_builder.build_image_targets(targets, enable_geo_routing)
+            
+            if not link_config or not link_config.targets or #link_config.targets == 0 then
+                logger.error("Failed to build CDN targets for " .. service_type .. " path: " .. targets)
+                return link_data.fallback_url
             end
-            table.insert(healthy_targets, healthy_target)
+            
+            -- 使用高级路由策略选择目标
+            local strategy_name = link_config.strategy or "weight"
+            logger.info(string.format("Using routing strategy: %s for %s path: %s", strategy_name, service_type, targets))
+            
+            local target = strategies.select(strategy_name, link_config.targets, client_info)
+            return target and target.url or link_config.targets[1].url
         else
-            logger.warn("Invalid target config: missing url field. Target should contain complete URL.")
-            logger.warn("If using CDN routing, please generate full URL when creating short link.")
-        end
-    end
-
-    if #healthy_targets == 0 then
-        logger.warn("No healthy targets available")
-        -- 返回降级 URL
-        if link_data.fallback_url then
+            logger.error("Invalid targets format for " .. service_type .. ": expected string, got " .. type(targets))
             return link_data.fallback_url
         end
-        return nil
+        
+    elseif service_type == "general" or service_type == "generic" then
+        -- 通用短链：targets 是完整URL数组（如 [{"url": "http://..."}]）
+        if type(targets) == "table" and #targets > 0 then
+            local healthy_targets = {}
+            for _, target in ipairs(targets) do
+                if target.url then
+                    local healthy_target = {}
+                    for k, v in pairs(target) do
+                        healthy_target[k] = v
+                    end
+                    table.insert(healthy_targets, healthy_target)
+                else
+                    logger.warn("Invalid target config: missing url field")
+                end
+            end
+
+            if #healthy_targets == 0 then
+                logger.warn("No healthy targets available")
+                return link_data.fallback_url
+            end
+
+            local strategy_name = link_data.strategy or "weight"
+            logger.info("Using routing strategy: " .. strategy_name .. " for generic URL")
+            
+            local target = strategies.select(strategy_name, healthy_targets, client_info)
+            return target and target.url or healthy_targets[1].url
+        else
+            logger.error("Invalid targets format for generic: expected array, got " .. type(targets))
+            return link_data.fallback_url
+        end
+    else
+        logger.error("Unknown service_type: " .. tostring(service_type))
+        return link_data.fallback_url
     end
-
-    -- 使用高级路由策略选择目标
-    -- 支持策略: geo, ip, asn, hash, weight, round_robin
-    -- 支持组合策略: geo+asn, ip+weight 等
-    local strategy_name = link_data.strategy or "weight"
-    logger.info("Using routing strategy: " .. strategy_name)
-    
-    local target = strategies.select(strategy_name, healthy_targets, client_info)
-
-    return target and target.url or healthy_targets[1].url
 end
 
 -- 访问控制阶段

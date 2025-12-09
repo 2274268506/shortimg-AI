@@ -104,11 +104,14 @@ function _M.create()
         end
     end
 
-    -- 使用 CDN 构建器生成 targets 配置
-    local link_config = cdn_builder.build_image_targets(image_path, enable_geo_routing)
+    -- 直接存储路径，重定向时根据分流规则动态拼接CDN域名
+    -- targets 字段存储图片路径，格式: "/i/uuid"
+    local targets_json = cjson.encode(image_path)
     
-    local targets_json = cjson.encode(link_config.targets)
-    local strategy = link_config.strategy
+    -- 根据是否启用地理路由选择策略
+    -- geo: 根据地理位置分流到不同CDN节点
+    -- weight: 简单权重分流
+    local strategy = enable_geo_routing and "geo" or "weight"
 
     -- 计算过期时间
     local expire_at = (expire_time and expire_time > 0) and (ngx.time() + expire_time) or nil
@@ -133,9 +136,11 @@ function _M.create()
     end
 
     -- 写入 Redis 缓存
+    -- targets 存储路径，重定向时根据分流规则拼接CDN域名
     local cache_data = {
-        targets = link_config.targets,
+        targets = image_path,  -- 直接存储路径
         strategy = strategy,
+        service_type = "imagebed",  -- 图床类型
         fallback_url = fallback_url
     }
     redis_client.set("short_link:" .. code, cjson.encode(cache_data), 3600)
@@ -149,7 +154,7 @@ function _M.create()
         image_path = image_path,
         strategy = strategy,
         geo_routing_enabled = enable_geo_routing,
-        targets_count = #link_config.targets,
+        targets_path = image_path,  -- 存储的是路径，重定向时动态拼接CDN域名
         expire_at = expire_at,
         created_at = ngx.time()
     })
@@ -199,11 +204,9 @@ function _M.batch_create()
                 })
                 results.failed = results.failed + 1
             else
-                -- 使用 CDN 构建器生成配置
-                local link_config = cdn_builder.build_image_targets(image_path, enable_geo_routing)
-                
-                local targets_json = cjson.encode(link_config.targets)
-                local strategy = link_config.strategy
+                -- 直接存储路径，重定向时根据分流规则动态拼接CDN域名
+                local targets_json = cjson.encode(image_path)
+                local strategy = enable_geo_routing and "geo" or "weight"
 
                 -- 插入数据库
                 local res, db_err = mysql_client.query(
@@ -212,10 +215,11 @@ function _M.batch_create()
                 )
 
                 if res then
-                    -- 写入缓存
+                    -- 写入缓存（存储路径，重定向时动态拼接CDN域名）
                     local cache_data = {
-                        targets = link_config.targets,
-                        strategy = strategy
+                        targets = image_path,
+                        strategy = strategy,
+                        service_type = "imagebed"  -- 图床类型
                     }
                     redis_client.set("short_link:" .. code, cjson.encode(cache_data), 3600)
 
@@ -286,7 +290,11 @@ function _M.create_generic()
     end
 
     -- 写入缓存
-    redis_client.set("short_link:" .. code, cjson.encode({targets = link_config.targets, strategy = strategy}), 3600)
+    redis_client.set("short_link:" .. code, cjson.encode({
+        targets = link_config.targets, 
+        strategy = strategy,
+        service_type = "generic"  -- 通用短链类型
+    }), 3600)
 
     logger.info("创建通用短链: " .. code .. " -> " .. target_url)
 
@@ -438,9 +446,35 @@ function _M.update()
         table.insert(params, data.strategy)
     end
 
-    if data.targets then
+    -- 支持两种格式：image_path（图床专用）或 targets（通用格式）
+    if data.image_path then
+        -- 图床专用：存储路径字符串（使用 cjson.encode 以匹配创建时的格式）
+        local targets_value = cjson.encode(data.image_path)
+        logger.info("Updating imagebed shortlink, targets_value type: " .. type(targets_value) .. ", value: " .. targets_value)
+        
+        table.insert(updates, "targets = ?")
+        table.insert(params, targets_value)
+        
+        -- 同时更新缓存
+        local cache_data = {
+            targets = data.image_path,
+            service_type = "imagebed"
+        }
+        
+        -- 获取当前的 strategy
+        local current = mysql_client.query("SELECT strategy FROM short_links WHERE short_code = ?", {code})
+        if current and #current > 0 then
+            cache_data.strategy = current[1].strategy
+        end
+        
+        redis_client.set("short_link:" .. code, cjson.encode(cache_data), 3600)
+    elseif data.targets then
+        -- 通用格式
         table.insert(updates, "targets = ?")
         table.insert(params, cjson.encode(data.targets))
+        
+        -- 清除缓存，让下次访问时重新加载
+        redis_client.del("short_link:" .. code)
     end
 
     if data.status then

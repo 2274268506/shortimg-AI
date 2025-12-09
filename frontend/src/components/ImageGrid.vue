@@ -71,6 +71,43 @@
               @click="$emit('convert', image)"
               title="格式转换"
             />
+          </div>
+
+          <div class="overlay-row">
+            <!-- 短链管理按钮 -->
+            <el-button
+              v-if="!image.shortLinkCode"
+              :icon="CirclePlus"
+              circle
+              size="small"
+              type="warning"
+              @click="handleGenerateShortLink(image)"
+              title="生成短链"
+            />
+            <el-dropdown
+              v-else
+              @command="(cmd) => handleShortLinkAction(cmd, image)"
+              trigger="click"
+            >
+              <el-button :icon="Switch" circle size="small" type="warning" title="短链管理" />
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="transfer">
+                    <el-icon><Switch /></el-icon>
+                    转移短链
+                  </el-dropdown-item>
+                  <el-dropdown-item command="unbind">
+                    <el-icon><Close /></el-icon>
+                    解绑短链
+                  </el-dropdown-item>
+                  <el-dropdown-item command="delete" divided>
+                    <el-icon><Delete /></el-icon>
+                    永久删除短链
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+
             <el-popconfirm
               title="确定删除此图片吗？"
               @confirm="$emit('delete', image.id)"
@@ -116,7 +153,9 @@
 </template>
 
 <script setup>
-import { View, Link, Download, Delete, PriceTag, Edit, RefreshRight } from '@element-plus/icons-vue'
+import { View, Link, Download, Delete, PriceTag, Edit, RefreshRight, CirclePlus, Switch, Close } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { generateShortLink, unbindShortLink, transferShortLink } from '@/api'
 
 defineProps({
   images: {
@@ -125,7 +164,117 @@ defineProps({
   }
 })
 
-defineEmits(['preview', 'copyLink', 'download', 'delete', 'editTags', 'edit', 'convert', 'copyShortLink'])
+const emit = defineEmits(['preview', 'copyLink', 'download', 'delete', 'editTags', 'edit', 'convert', 'copyShortLink', 'refresh'])
+
+// 生成短链
+const handleGenerateShortLink = async (image) => {
+  try {
+    const result = await generateShortLink(image.id)
+    ElMessage.success(`短链生成成功: ${result.data.short_link_code}`)
+    // 触发刷新
+    emit('refresh')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || '生成短链失败')
+  }
+}
+
+// 短链操作菜单
+const handleShortLinkAction = async (command, image) => {
+  switch (command) {
+    case 'transfer':
+      await handleTransferShortLink(image)
+      break
+    case 'unbind':
+      await handleUnbindShortLink(image, false)
+      break
+    case 'delete':
+      await handleDeleteShortLink(image)
+      break
+  }
+}
+
+// 转移短链
+const handleTransferShortLink = async (image) => {
+  try {
+    const { value: targetUuid } = await ElMessageBox.prompt(
+      '请输入目标图片的UUID（支持完整路径或纯UUID）',
+      '转移短链',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputPattern: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+        inputErrorMessage: '请输入有效的UUID格式'
+      }
+    )
+
+    if (!targetUuid) return
+
+    // 提取UUID（支持完整路径）
+    const uuidMatch = targetUuid.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)
+    const uuid = uuidMatch ? uuidMatch[1].toLowerCase() : targetUuid.toLowerCase()
+
+    // 检查是否是同一张图片
+    if (uuid === image.uuid.toLowerCase()) {
+      ElMessage.warning('不能转移到同一张图片')
+      return
+    }
+
+    const result = await transferShortLink(image.id, uuid)
+    ElMessage.success(`短链已转移到新图片 (ID: ${result.data.new_image_id})`)
+    emit('refresh')
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '转移短链失败')
+    }
+  }
+}
+
+// 解绑短链
+const handleUnbindShortLink = async (image, permanent) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要解绑短链吗？解绑后短链仍然存在，只是不再指向此图片。',
+      '解绑短链',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await unbindShortLink(image.id, permanent)
+    ElMessage.success('短链已解绑')
+    emit('refresh')
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '解绑短链失败')
+    }
+  }
+}
+
+// 永久删除短链
+const handleDeleteShortLink = async (image) => {
+  try {
+    await ElMessageBox.confirm(
+      '警告：此操作将永久删除短链，短链将无法访问！',
+      '永久删除短链',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'error',
+        distinguishCancelAndClose: true
+      }
+    )
+
+    await unbindShortLink(image.id, true)
+    ElMessage.success('短链已永久删除')
+    emit('refresh')
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error.response?.data?.error || '删除短链失败')
+    }
+  }
+}
 
 // 添加时间戳参数以避免缓存
 const getImageUrl = (image) => {
@@ -210,21 +359,19 @@ const parseTags = (tagsStr) => {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.65);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  column-gap: 4px;
+  row-gap: 6px;
+  padding: 10px;
   opacity: 0;
   transition: opacity 0.3s;
+  align-content: center;
+  justify-content: center;
 }
 
 .overlay-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
+  display: contents;
 }
 
 .image-card:hover .image-overlay {
@@ -233,12 +380,20 @@ const parseTags = (tagsStr) => {
 
 .image-overlay .el-button {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
 }
 
 .image-overlay .el-button.is-circle {
-  padding: 8px;
+  padding: 6px;
+}
+
+/* 下拉菜单和确认框在九宫格中的样式 */
+.image-overlay .el-dropdown,
+.image-overlay .el-popconfirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .image-info {
@@ -347,16 +502,15 @@ const parseTags = (tagsStr) => {
     opacity: 1;
     background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
     padding: 8px;
-  }
-
-  .overlay-row {
-    gap: 4px;
+    grid-template-columns: repeat(3, auto);
+    column-gap: 3px;
+    row-gap: 4px;
   }
 
   .image-overlay .el-button {
-    width: 28px;
-    height: 28px;
-    padding: 6px;
+    width: 26px;
+    height: 26px;
+    padding: 5px;
   }
 }
 
@@ -388,13 +542,12 @@ const parseTags = (tagsStr) => {
     font-size: 10px;
   }
 
-  /* 移动端只显示最重要的按钮 */
-  .overlay-row:first-child {
-    display: flex;
-  }
-
-  .overlay-row:last-child {
-    display: none;
+  /* 小屏手机使用2列布局，按钮更小 */
+  .image-overlay {
+    grid-template-columns: repeat(2, auto);
+    column-gap: 2px;
+    row-gap: 3px;
+    padding: 6px;
   }
 
   .image-overlay .el-button {

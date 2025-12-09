@@ -136,6 +136,7 @@
             @editTags="handleEditTags"
             @edit="handleEdit"
             @convert="handleConvert"
+            @refresh="loadImages"
           />
 
           <!-- 列表视图 -->
@@ -406,6 +407,12 @@ const handleDeleteAlbum = async (id) => {
 }
 
 // Search and sort
+const loadImages = async () => {
+  if (currentAlbum.value) {
+    await store.loadImages(currentAlbum.value.id, searchKeyword.value)
+  }
+}
+
 const handleSearch = async () => {
   if (currentAlbum.value) {
     await store.loadImages(currentAlbum.value.id, searchKeyword.value)

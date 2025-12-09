@@ -363,3 +363,48 @@ func (c *ShortLinkClient) GetStats() (*Stats, error) {
 
 	return result.Data, nil
 }
+
+// UpdateShortLink 更新短链目标路径（V2 API）
+func (c *ShortLinkClient) UpdateShortLink(code string, newImagePath string) error {
+	// V2 API 图床短链的 targets 字段存储的是路径字符串，不是数组
+	updateReq := map[string]interface{}{
+		"image_path": newImagePath, // 直接使用 image_path 字段
+	}
+
+	jsonData, err := json.Marshal(updateReq)
+	if err != nil {
+		return fmt.Errorf("序列化请求失败: %w", err)
+	}
+
+	httpReq, err := http.NewRequest("PUT", c.BaseURL+"/api/v2/imagebed/"+code, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	if c.APIKey != "" {
+		httpReq.Header.Set("X-API-Key", c.APIKey)
+	}
+
+	resp, err := c.HTTPClient.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("读取响应失败: %w", err)
+	}
+
+	var result ShortLinkResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return fmt.Errorf("解析响应失败: %w", err)
+	}
+
+	if !result.Success {
+		return fmt.Errorf("更新短链失败: %s", result.Error)
+	}
+
+	return nil
+}

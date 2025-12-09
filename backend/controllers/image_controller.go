@@ -359,13 +359,9 @@ func GetImages(c *gin.Context) {
 	cfg := config.GetConfig()
 	for i := range images {
 		images[i].URL = generateImageURL(images[i].UUID)
-		// 如果短链URL为空,但有短链代码,则构造完整的短链URL
-		// 优先使用数据库中已保存的短链URL
-		if images[i].ShortLinkURL == "" && images[i].ShortLinkCode != "" {
+		// 如果有短链代码，构造完整的短链URL（强制使用公开URL）
+		if images[i].ShortLinkCode != "" {
 			shortLinkHost := cfg.ShortLinkPublicURL
-			if shortLinkHost == "" {
-				shortLinkHost = cfg.ShortLinkBaseURL
-			}
 			if shortLinkHost == "" {
 				shortLinkHost = "http://localhost"
 			}
@@ -393,7 +389,7 @@ func GetImage(c *gin.Context) {
 	// 如果有短链代码，构造完整的短链URL
 	if imageRecord.ShortLinkCode != "" {
 		cfg := config.GetConfig()
-		shortLinkHost := cfg.ShortLinkBaseURL
+		shortLinkHost := cfg.ShortLinkPublicURL
 		if shortLinkHost == "" {
 			shortLinkHost = "http://localhost"
 		}

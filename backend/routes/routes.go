@@ -125,6 +125,11 @@ func SetupRoutes() *gin.Engine {
 			images.PUT("/:id/tags", middleware.AuthMiddleware(), middleware.CheckImageOwnership(), controllers.UpdateImageTags)       // 更新标签
 			images.PUT("/:id/convert", middleware.AuthMiddleware(), middleware.CheckImageOwnership(), controllers.ConvertImageFormat) // 转换格式
 			images.DELETE("/:id", middleware.AuthMiddleware(), middleware.CheckImageOwnership(), controllers.DeleteImage)             // 删除图片
+
+			// 短链管理路由
+			images.POST("/:id/shortlink", middleware.AuthMiddleware(), middleware.CheckImageOwnership(), controllers.GenerateShortLink)    // 生成短链
+			images.DELETE("/:id/shortlink", middleware.AuthMiddleware(), middleware.CheckImageOwnership(), controllers.UnbindShortLink)    // 删除短链
+			images.PUT("/:id/shortlink", middleware.AuthMiddleware(), middleware.CheckImageOwnership(), controllers.UpdateShortLinkTarget) // 转移短链
 		}
 
 		// 标签相关路由
