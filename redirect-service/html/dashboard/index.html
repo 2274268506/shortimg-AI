@@ -818,9 +818,9 @@
         <div class="subtitle">活跃链接</div>
       </div>
       <div class="stat-card">
-        <h3>今日访问</h3>
+        <h3>今日新增</h3>
         <div class="value" id="today-visits">0</div>
-        <div class="subtitle">相比昨日 +0%</div>
+        <div class="subtitle">新建短链</div>
       </div>
       <div class="stat-card">
         <h3>总访问量</h3>
@@ -855,14 +855,23 @@
             <option value="imagebed">图床</option>
             <option value="file">文件</option>
             <option value="video">视频</option>
-            <option value="api">API</option>
           </select>
           <select id="status-filter" style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px;">
             <option value="">全部状态</option>
             <option value="active">活跃</option>
-            <option value="inactive">已禁用</option>
+            <option value="paused">已暂停</option>
             <option value="deleted">已删除</option>
             <option value="expired">已过期</option>
+          </select>
+          <select id="sort-field" style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px;">
+            <option value="created_at">创建时间</option>
+            <option value="updated_at">更新时间</option>
+            <option value="visit_count">访问量</option>
+            <option value="short_code">短链码</option>
+          </select>
+          <select id="sort-order" style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px;">
+            <option value="DESC">降序 ↓</option>
+            <option value="ASC">升序 ↑</option>
           </select>
           <input type="text" id="search-input" placeholder="搜索短链..."
             style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px; flex: 1; max-width: 300px;">
@@ -1167,7 +1176,8 @@
           <label>状态</label>
           <select id="edit_status">
             <option value="active">活跃</option>
-            <option value="inactive">已禁用</option>
+            <option value="paused">已暂停</option>
+            <option value="deleted">已删除</option>
           </select>
         </div>
 
@@ -1182,16 +1192,9 @@
   <script src="dashboard.js?v=20251209001338"></script>
   <script src="modal-functions.js?v=20251209001338"></script>
   <script>
-    console.log('🔍 HTML 内联脚本执行');
-    console.log('🔍 showCreateModal 函数:', typeof showCreateModal);
-    console.log('🔍 generateRandomCode 函数:', typeof generateRandomCode);
-    console.log('🔍 nextStep 函数:', typeof nextStep);
-
     // 如果函数未定义，创建备用函数
     if (typeof generateRandomCode === 'undefined') {
-      console.warn('⚠️ generateRandomCode 未定义，创建备用');
       window.generateRandomCode = function () {
-        console.log('🎲 备用 generateRandomCode 执行');
         const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
         let code = '';
         for (let i = 0; i < 8; i++) {
@@ -1234,18 +1237,12 @@
       };
     }
 
-    // 在页面加载后测试
+    // 页面加载完成后的初始化
     window.addEventListener('load', function () {
-      console.log('🔍 页面已加载');
-      console.log('🔍 测试按钮绑定...');
-
+      // 确保创建按钮事件正常工作
       const createBtn = document.querySelector('button[onclick*="showCreateModal"]');
-      console.log('🔍 创建按钮:', createBtn);
-
       if (createBtn && typeof showCreateModal === 'function') {
-        console.log('✅ 按钮和函数都存在，手动绑定事件');
         createBtn.addEventListener('click', function (e) {
-          console.log('👆 按钮被点击！');
           e.preventDefault();
           showCreateModal();
         });

@@ -5,7 +5,8 @@ console.log('🎯 dashboard.js 开始加载...');
 
 // API 基础配置 - 统一使用 V2 API
 const API_BASE = '/api/v2/imagebed';  // V2 统一 API
-let API_KEY = localStorage.getItem('api_key') || '';
+const DEFAULT_API_KEY = 'test-api-key-12345';  // 默认 API Key
+let API_KEY = localStorage.getItem('api_key') || DEFAULT_API_KEY;
 
 console.log('🔑 API_KEY:', API_KEY ? '已设置' : '未设置');
 console.log('🔗 API V2:', API_BASE);
@@ -226,7 +227,32 @@ async function refreshLinks(page = 1) {
   tbody.innerHTML = '<tr><td colspan="7" class="loading">加载中...</td></tr>';
 
   try {
-    const response = await request(`${API_BASE}?page=${page}&limit=20`);
+    // 获取筛选条件
+    const serviceTypeFilter = $('#service-type-filter')?.value || '';
+    const statusFilter = $('#status-filter')?.value || '';
+    const searchKeyword = $('#search-input')?.value?.trim() || '';
+    const sortField = $('#sort-field')?.value || 'created_at';
+    const sortOrder = $('#sort-order')?.value || 'DESC';
+
+    // 构建查询参数
+    let queryParams = `page=${page}&limit=20`;
+    if (serviceTypeFilter) {
+      queryParams += `&service_type=${serviceTypeFilter}`;
+    }
+    if (statusFilter) {
+      queryParams += `&status=${statusFilter}`;
+    }
+    if (searchKeyword) {
+      queryParams += `&search=${encodeURIComponent(searchKeyword)}`;
+    }
+    if (sortField) {
+      queryParams += `&sort_field=${sortField}`;
+    }
+    if (sortOrder) {
+      queryParams += `&sort_order=${sortOrder}`;
+    }
+
+    const response = await request(`${API_BASE}?${queryParams}`);
 
     // 处理响应数据结构 { success: true, data: { links: [...], total: ... } }
     const data = response.data || response;
@@ -297,7 +323,7 @@ function getServiceTypeDisplay(serviceType) {
 function getStatusBadgeClass(status) {
   const map = {
     'active': 'success',
-    'inactive': 'warning',
+    'paused': 'warning',
     'expired': 'error',
     'deleted': 'error'
   };
@@ -307,7 +333,7 @@ function getStatusBadgeClass(status) {
 function getStatusText(status) {
   const map = {
     'active': '活跃',
-    'inactive': '已禁用',
+    'paused': '已暂停',
     'expired': '已过期',
     'deleted': '已删除'
   };
@@ -928,21 +954,81 @@ async function loadDashboardStats() {
     const response = await request(`${API_BASE}/stats/overview`);
     const statsData = response.data || response;
 
-    $('#total-links').textContent = statsData.total_links || 0;
-    $('#total-visits').textContent = (parseInt(statsData.total_visits) || 0).toLocaleString();
-    $('#unique-visitors').textContent = (parseInt(statsData.unique_visitors) || 0).toLocaleString();
+    // 更新统计卡片
+    const totalLinks = (parseInt(statsData.total_links) || 0).toLocaleString();
+    const totalVisits = (parseInt(statsData.total_visits) || 0).toLocaleString();
+    const uniqueVisitors = (parseInt(statsData.unique_visitors) || 0).toLocaleString();
+    
+    const totalLinksEl = $('#total-links');
+    const totalVisitsEl = $('#total-visits');
+    const uniqueVisitorsEl = $('#unique-visitors');
+    
+    if (totalLinksEl) totalLinksEl.textContent = totalLinks;
+    if (totalVisitsEl) totalVisitsEl.textContent = totalVisits;
+    if (uniqueVisitorsEl) uniqueVisitorsEl.textContent = uniqueVisitors;
 
-    // 如果有今日访问数据
-    if ($('#today-visits')) {
-      $('#today-visits').textContent = (parseInt(statsData.today_visits) || 0).toLocaleString();
+    // 更新今日新增（如果有）
+    const todayVisitsEl = $('#today-visits');
+    if (todayVisitsEl) {
+      const todayNew = (parseInt(statsData.today_new) || 0).toLocaleString();
+      todayVisitsEl.textContent = todayNew;
     }
+
+    // 显示类型统计（如果有容器）
+    if (statsData.type_stats && $('#type-stats')) {
+      const typeStatsHtml = Object.entries(statsData.type_stats)
+        .map(([type, count]) => `
+          <div class="stat-item">
+            <span class="stat-label">${getServiceTypeText(type)}:</span>
+            <span class="stat-value">${count}</span>
+          </div>
+        `).join('');
+      $('#type-stats').innerHTML = typeStatsHtml;
+    }
+
+    // 显示状态统计（如果有容器）
+    if (statsData.status_stats && $('#status-stats')) {
+      const statusStatsHtml = Object.entries(statsData.status_stats)
+        .map(([status, count]) => `
+          <div class="stat-item">
+            <span class="stat-label">${getStatusText(status)}:</span>
+            <span class="stat-value">${count}</span>
+          </div>
+        `).join('');
+      $('#status-stats').innerHTML = statusStatsHtml;
+    }
+
+    // 显示 TOP 链接（如果有容器）
+    if (statsData.top_links && $('#top-links')) {
+      const topLinksHtml = statsData.top_links
+        .map((link, index) => `
+          <div class="top-link-item">
+            <span class="rank">#${index + 1}</span>
+            <code>${link.short_code}</code>
+            <span class="visits">${link.visit_count} 次</span>
+          </div>
+        `).join('');
+      $('#top-links').innerHTML = topLinksHtml || '<div class="empty">暂无数据</div>';
+    }
+
   } catch (error) {
     console.error('加载统计失败:', error);
     // 显示默认值
-    $('#total-links').textContent = '-';
-    $('#total-visits').textContent = '-';
-    $('#unique-visitors').textContent = '-';
+    if ($('#total-links')) $('#total-links').textContent = '-';
+    if ($('#total-visits')) $('#total-visits').textContent = '-';
+    if ($('#unique-visitors')) $('#unique-visitors').textContent = '-';
   }
+}
+
+// 获取服务类型文本
+function getServiceTypeText(type) {
+  const typeMap = {
+    'general': '通用',
+    'imagebed': '图床',
+    'file': '文件',
+    'video': '视频'
+  };
+  return typeMap[type] || type;
 }
 
 // 页面加载完成后初始化
@@ -977,71 +1063,30 @@ function updateApiKeyDisplay() {
   }
 }
 
-// 搜索功能
+// 搜索功能 - 使用防抖
 $('#search-input').addEventListener('input', debounce((e) => {
-  filterLinks();
-}, 300));
+  refreshLinks(1); // 重新加载第一页
+}, 500));
 
-// 服务类型筛选
+// 服务类型筛选 - 立即重新加载
 $('#service-type-filter').addEventListener('change', () => {
-  filterLinks();
+  refreshLinks(1); // 重新加载第一页
 });
 
-// 状态筛选
+// 状态筛选 - 立即重新加载
 $('#status-filter').addEventListener('change', () => {
-  filterLinks();
+  refreshLinks(1); // 重新加载第一页
 });
 
-// 综合筛选函数
-function filterLinks() {
-  const keyword = $('#search-input').value.toLowerCase();
-  const serviceType = $('#service-type-filter').value;
-  const status = $('#status-filter').value;
-  const rows = $$('#links-tbody tr');
+// 排序字段筛选 - 立即重新加载
+$('#sort-field').addEventListener('change', () => {
+  refreshLinks(1); // 重新加载第一页
+});
 
-  rows.forEach(row => {
-    // 跳过加载中和空状态行
-    if (row.cells.length === 1) {
-      return;
-    }
-
-    const text = row.textContent.toLowerCase();
-    const typeCell = row.cells[1]; // 类型列
-    const statusCell = row.cells[3]; // 状态列
-
-    // 检查搜索关键词
-    const matchKeyword = !keyword || text.includes(keyword);
-
-    // 检查服务类型
-    let matchType = true;
-    if (serviceType) {
-      const typeText = typeCell.textContent.toLowerCase();
-      const typeMap = {
-        'general': '通用',
-        'imagebed': '图床',
-        'file': '文件',
-        'video': '视频',
-        'api': 'api'
-      };
-      matchType = typeText.includes(typeMap[serviceType].toLowerCase());
-    }
-
-    // 检查状态
-    let matchStatus = true;
-    if (status) {
-      const statusText = statusCell.textContent.toLowerCase();
-      const statusMap = {
-        'active': '活跃',
-        'inactive': '已禁用',
-        'deleted': '已删除',
-        'expired': '已过期'
-      };
-      matchStatus = statusText.includes(statusMap[status].toLowerCase());
-    }
-
-    row.style.display = (matchKeyword && matchType && matchStatus) ? '' : 'none';
-  });
-}
+// 排序顺序筛选 - 立即重新加载
+$('#sort-order').addEventListener('change', () => {
+  refreshLinks(1); // 重新加载第一页
+});
 
 // 防抖函数
 function debounce(func, wait) {

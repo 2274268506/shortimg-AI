@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统计功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stats-display {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            background: #e6f7ff;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1890ff;
+        }
+        button {
+            background: #1890ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #40a9ff;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .success { color: #52c41a; }
+        .error { color: #f5222d; }
+    </style>
+</head>
+<body>
+    <h1>🧪 统计功能测试页面</h1>
+    
+    <div class="test-card">
+        <h2>测试控制</h2>
+        <button onclick="testStats()">🔄 刷新统计数据</button>
+        <button onclick="clearCache()">🗑️ 清除缓存</button>
+    </div>
+
+    <div class="test-card">
+        <h2>统计显示</h2>
+        <div class="stats-display">
+            <div class="stat-item">
+                <span class="stat-label">总链接数</span>
+                <div class="stat-value" id="total-links">-</div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">今日新增</span>
+                <div class="stat-value" id="today-new">-</div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">总访问量</span>
+                <div class="stat-value" id="total-visits">-</div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">独立访客</span>
+                <div class="stat-value" id="unique-visitors">-</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-card">
+        <h2>API 响应数据</h2>
+        <pre id="api-response">点击"刷新统计数据"按钮查看API响应...</pre>
+    </div>
+
+    <div class="test-card">
+        <h2>日志输出</h2>
+        <pre id="console-log"></pre>
+    </div>
+
+    <script>
+        const API_KEY = 'test-api-key-12345';
+        const API_BASE = '/api/v2/imagebed';
+
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : '📝';
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logEl.innerHTML += `<span class="${className}">[${timestamp}] ${icon} ${message}</span>\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(message);
+        }
+
+        async function testStats() {
+            log('开始测试统计功能...');
+            
+            try {
+                log(`请求 URL: ${API_BASE}/stats/overview`);
+                log(`API Key: ${API_KEY}`);
+                
+                const response = await fetch(`${API_BASE}/stats/overview`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    }
+                });
+
+                log(`HTTP 状态: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+
+                const data = await response.json();
+                log('API 响应成功！', 'success');
+
+                // 显示原始响应
+                document.getElementById('api-response').textContent = 
+                    JSON.stringify(data, null, 2);
+
+                const statsData = data.data || data;
+
+                // 更新统计卡片
+                document.getElementById('total-links').textContent = 
+                    (parseInt(statsData.total_links) || 0).toLocaleString();
+                document.getElementById('today-new').textContent = 
+                    (parseInt(statsData.today_new) || 0).toLocaleString();
+                document.getElementById('total-visits').textContent = 
+                    (parseInt(statsData.total_visits) || 0).toLocaleString();
+                document.getElementById('unique-visitors').textContent = 
+                    (parseInt(statsData.unique_visitors) || 0).toLocaleString();
+
+                log('✅ 统计数据更新成功！', 'success');
+                log(`- 总链接数: ${statsData.total_links}`);
+                log(`- 今日新增: ${statsData.today_new}`);
+                log(`- 总访问量: ${statsData.total_visits}`);
+                log(`- 独立访客: ${statsData.unique_visitors}`);
+
+            } catch (error) {
+                log(`请求失败: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        function clearCache() {
+            log('清除本地缓存...');
+            localStorage.clear();
+            sessionStorage.clear();
+            log('缓存已清除', 'success');
+            log('正在刷新页面...');
+            setTimeout(() => location.reload(true), 1000);
+        }
+
+        // 页面加载时自动测试
+        window.addEventListener('DOMContentLoaded', () => {
+            log('页面加载完成，自动执行测试...', 'success');
+            testStats();
+        });
+    </script>
+</body>
+</html>

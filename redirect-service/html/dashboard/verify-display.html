@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>显示验证测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .test-section {
+            background: white;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e8e8e8;
+        }
+        .stat-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1890ff;
+        }
+        .stat-card .subtitle {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        button {
+            background: #1890ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #40a9ff;
+        }
+        .info {
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 统计卡片显示验证测试</h1>
+
+    <div class="test-section">
+        <h2>测试说明</h2>
+        <div class="info">
+            <p>这个页面使用与主面板相同的HTML和CSS结构，用于验证统计卡片的显示是否正常。</p>
+            <p>如果这里能看到数字，说明HTML/CSS没有问题；如果看不到，说明样式有冲突。</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试控制</h2>
+        <button onclick="updateStats()">📊 更新统计数据</button>
+        <button onclick="resetStats()">🔄 重置为0</button>
+        <button onclick="testLargeNumbers()">🔢 测试大数字</button>
+        <button onclick="inspectElements()">🔍 检查元素</button>
+    </div>
+
+    <div class="test-section">
+        <h2>统计卡片（与主面板相同的HTML结构）</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>总链接数</h3>
+                <div class="value" id="total-links">0</div>
+                <div class="subtitle">活跃链接</div>
+            </div>
+            <div class="stat-card">
+                <h3>今日新增</h3>
+                <div class="value" id="today-visits">0</div>
+                <div class="subtitle">新建短链</div>
+            </div>
+            <div class="stat-card">
+                <h3>总访问量</h3>
+                <div class="value" id="total-visits">0</div>
+                <div class="subtitle">历史累计</div>
+            </div>
+            <div class="stat-card">
+                <h3>独立访客</h3>
+                <div class="value" id="unique-visitors">0</div>
+                <div class="subtitle">去重统计</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>检查信息</h2>
+        <pre id="inspect-output">点击"检查元素"按钮查看详细信息...</pre>
+    </div>
+
+    <script>
+        function updateStats() {
+            console.log('更新统计数据...');
+            document.getElementById('total-links').textContent = '86';
+            document.getElementById('today-visits').textContent = '14';
+            document.getElementById('total-visits').textContent = '1,234';
+            document.getElementById('unique-visitors').textContent = '864';
+            console.log('✅ 数据已更新');
+            alert('统计数据已更新！请检查页面上是否能看到数字。');
+        }
+
+        function resetStats() {
+            console.log('重置统计数据...');
+            document.getElementById('total-links').textContent = '0';
+            document.getElementById('today-visits').textContent = '0';
+            document.getElementById('total-visits').textContent = '0';
+            document.getElementById('unique-visitors').textContent = '0';
+            console.log('✅ 数据已重置');
+        }
+
+        function testLargeNumbers() {
+            console.log('测试大数字...');
+            document.getElementById('total-links').textContent = '999,999';
+            document.getElementById('today-visits').textContent = '88,888';
+            document.getElementById('total-visits').textContent = '12,345,678';
+            document.getElementById('unique-visitors').textContent = '8,641,975';
+            console.log('✅ 大数字测试完成');
+        }
+
+        function inspectElements() {
+            const elements = {
+                'total-links': document.getElementById('total-links'),
+                'today-visits': document.getElementById('today-visits'),
+                'total-visits': document.getElementById('total-visits'),
+                'unique-visitors': document.getElementById('unique-visitors')
+            };
+
+            let output = '元素检查报告\n' + '='.repeat(50) + '\n\n';
+
+            for (const [id, el] of Object.entries(elements)) {
+                output += `ID: ${id}\n`;
+                output += `  textContent: "${el.textContent}"\n`;
+                output += `  innerHTML: "${el.innerHTML}"\n`;
+                
+                const styles = window.getComputedStyle(el);
+                output += `  display: ${styles.display}\n`;
+                output += `  visibility: ${styles.visibility}\n`;
+                output += `  opacity: ${styles.opacity}\n`;
+                output += `  color: ${styles.color}\n`;
+                output += `  fontSize: ${styles.fontSize}\n`;
+                output += `  fontWeight: ${styles.fontWeight}\n`;
+                
+                const rect = el.getBoundingClientRect();
+                output += `  位置: {x: ${rect.x.toFixed(2)}, y: ${rect.y.toFixed(2)}, width: ${rect.width.toFixed(2)}, height: ${rect.height.toFixed(2)}}\n`;
+                output += '\n';
+            }
+
+            document.getElementById('inspect-output').textContent = output;
+            console.log(output);
+        }
+
+        // 页面加载时自动更新一次
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('页面加载完成');
+            setTimeout(() => {
+                console.log('自动更新统计数据...');
+                updateStats();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -313,17 +313,52 @@ function _M.list()
     local page = tonumber(args.page) or 1
     local limit = tonumber(args.limit) or 20
     local service_type = args.service_type
+    local status = args.status
+    local search = args.search
+    local sort_field = args.sort_field or "created_at"
+    local sort_order = args.sort_order or "DESC"
+
+    -- 验证排序字段（防止 SQL 注入）
+    local allowed_sort_fields = {
+        created_at = true,
+        updated_at = true,
+        visit_count = true,
+        short_code = true
+    }
+    if not allowed_sort_fields[sort_field] then
+        sort_field = "created_at"
+    end
+
+    -- 验证排序顺序
+    if sort_order ~= "ASC" and sort_order ~= "DESC" then
+        sort_order = "DESC"
+    end
 
     -- 计算偏移量
     local offset = (page - 1) * limit
 
     -- 构建查询条件
-    local where_clause = ""
+    local where_conditions = {}
     local params = {}
 
     if service_type and service_type ~= "" then
-        where_clause = "WHERE service_type = ?"
+        table.insert(where_conditions, "service_type = ?")
         table.insert(params, service_type)
+    end
+
+    if status and status ~= "" then
+        table.insert(where_conditions, "status = ?")
+        table.insert(params, status)
+    end
+
+    if search and search ~= "" then
+        table.insert(where_conditions, "short_code LIKE ?")
+        table.insert(params, "%" .. search .. "%")
+    end
+
+    local where_clause = ""
+    if #where_conditions > 0 then
+        where_clause = "WHERE " .. table.concat(where_conditions, " AND ")
     end
 
     -- 查询总数
@@ -349,7 +384,7 @@ function _M.list()
         SELECT short_code, strategy, status, service_type,
                created_at, updated_at, visit_count
         FROM short_links
-    ]] .. where_clause .. " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    ]] .. where_clause .. " ORDER BY " .. sort_field .. " " .. sort_order .. " LIMIT ? OFFSET ?"
 
     local links, err = mysql_client.query(list_sql, query_params)
 
@@ -554,7 +589,7 @@ end
 function _M.stats_overview()
     logger.info("查询统计概览")
 
-    -- 查询总链接数
+    -- 查询总链接数（排除已删除）
     local total_sql = "SELECT COUNT(*) as total FROM short_links WHERE status != 'deleted'"
     local total_result, err = mysql_client.query(total_sql)
     
@@ -565,8 +600,8 @@ function _M.stats_overview()
     
     local total_links = (total_result and total_result[1] and total_result[1].total) or 0
 
-    -- 查询总访问次数
-    local visits_sql = "SELECT SUM(visit_count) as total_visits FROM short_links"
+    -- 查询总访问次数（使用 COALESCE 处理 NULL）
+    local visits_sql = "SELECT COALESCE(SUM(visit_count), 0) as total_visits FROM short_links WHERE status != 'deleted'"
     local visits_result, err = mysql_client.query(visits_sql)
     
     if err then
@@ -574,19 +609,94 @@ function _M.stats_overview()
         return respond_error("查询失败: " .. err, 500)
     end
     
-    local total_visits = (visits_result and visits_result[1] and visits_result[1].total_visits) or 0
+    local total_visits = tonumber((visits_result and visits_result[1] and visits_result[1].total_visits) or 0)
 
-    -- 查询今日访问（简化版，使用 Redis 或其他方式可以更精确）
-    local today_visits = 0  -- 暂时返回0，后续可以从访问日志表获取
+    -- 查询今日新增链接数
+    local today_new_sql = "SELECT COUNT(*) as today_new FROM short_links WHERE DATE(created_at) = CURDATE()"
+    local today_new_result, err = mysql_client.query(today_new_sql)
+    
+    if err then
+        logger.error("查询今日新增失败: " .. err)
+    end
+    
+    local today_new = (today_new_result and today_new_result[1] and today_new_result[1].today_new) or 0
 
-    -- 查询独立访客数（简化版）
-    local unique_visitors = math.floor(total_visits * 0.7)  -- 估算值
+    -- 查询各类型短链数量
+    local type_stats_sql = "SELECT service_type, COUNT(*) as count FROM short_links WHERE status != 'deleted' GROUP BY service_type"
+    local type_stats_result, err = mysql_client.query(type_stats_sql)
+    
+    local type_stats = {}
+    if type_stats_result and #type_stats_result > 0 then
+        for _, row in ipairs(type_stats_result) do
+            type_stats[row.service_type] = tonumber(row.count) or 0
+        end
+    end
+
+    -- 查询各状态短链数量
+    local status_stats_sql = "SELECT status, COUNT(*) as count FROM short_links GROUP BY status"
+    local status_stats_result, err = mysql_client.query(status_stats_sql)
+    
+    local status_stats = {}
+    if status_stats_result and #status_stats_result > 0 then
+        for _, row in ipairs(status_stats_result) do
+            status_stats[row.status] = tonumber(row.count) or 0
+        end
+    end
+
+    -- 查询最近7天的访问趋势
+    local trend_sql = [[
+        SELECT DATE(created_at) as date, COUNT(*) as count 
+        FROM short_links 
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+    ]]
+    local trend_result, err = mysql_client.query(trend_sql)
+    
+    local trend_data = {}
+    if trend_result and #trend_result > 0 then
+        for _, row in ipairs(trend_result) do
+            table.insert(trend_data, {
+                date = row.date,
+                count = tonumber(row.count) or 0
+            })
+        end
+    end
+
+    -- 查询访问量 TOP 10
+    local top_sql = [[
+        SELECT short_code, service_type, visit_count, created_at
+        FROM short_links 
+        WHERE status = 'active'
+        ORDER BY visit_count DESC
+        LIMIT 10
+    ]]
+    local top_result, err = mysql_client.query(top_sql)
+    
+    local top_links = {}
+    if top_result and #top_result > 0 then
+        for _, row in ipairs(top_result) do
+            table.insert(top_links, {
+                short_code = row.short_code,
+                service_type = row.service_type,
+                visit_count = tonumber(row.visit_count) or 0,
+                created_at = row.created_at
+            })
+        end
+    end
+
+    -- 估算独立访客数（简化版：访问量的70%，确保是整数）
+    local unique_visitors = math.floor(tonumber(total_visits) * 0.7)
 
     return respond_success({
-        total_links = tonumber(total_links),
-        total_visits = tonumber(total_visits),
-        today_visits = tonumber(today_visits),
-        unique_visitors = tonumber(unique_visitors)
+        total_links = tonumber(total_links) or 0,
+        total_visits = tonumber(total_visits) or 0,
+        today_new = tonumber(today_new) or 0,
+        unique_visitors = tonumber(unique_visitors) or 0,
+        type_stats = type_stats,
+        status_stats = status_stats,
+        trend_data = trend_data,
+        top_links = top_links
     })
 end
 
