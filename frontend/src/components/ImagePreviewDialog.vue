@@ -155,7 +155,12 @@ const visible = computed({
 })
 
 const fullImageUrl = computed(() => {
-  return props.image?.url ? (window.location.origin + props.image.url) : ''
+  if (!props.image?.url) return ''
+  // 如果 URL 已经是完整 URL（包含 http:// 或 https://），直接返回
+  // 否则拼接前端域名（兼容旧数据）
+  return props.image.url.startsWith('http://') || props.image.url.startsWith('https://')
+    ? props.image.url
+    : (window.location.origin + props.image.url)
 })
 
 // 添加时间戳参数以避免缓存

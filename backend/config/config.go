@@ -104,6 +104,9 @@ type Config struct {
 	ShortLinkExpire    int64  // 短链默认过期时间（秒），0表示永不过期
 	ShortLinkAPIKey    string // 短链服务API密钥
 
+	// 后端服务配置
+	BackendPublicURL string // 后端服务公开访问地址(用于生成完整图片URL)
+
 	// CORS 跨域配置
 	CORSEnabled      bool     // 是否启用CORS
 	CORSAllowOrigins []string // 允许的源
@@ -241,6 +244,9 @@ func LoadConfig() *Config {
 		ShortLinkPublicURL: getEnv("SHORT_LINK_PUBLIC_URL", ""), // 默认为空,使用 ShortLinkBaseURL
 		ShortLinkExpire:    getEnvAsInt64("SHORT_LINK_EXPIRE", 0),
 		ShortLinkAPIKey:    getEnv("SHORT_LINK_API_KEY", ""),
+
+		// 后端服务配置
+		BackendPublicURL: getEnv("BACKEND_PUBLIC_URL", "http://localhost:8080"),
 
 		// CORS 跨域配置
 		CORSEnabled:      getEnvAsBool("CORS_ENABLED", true),

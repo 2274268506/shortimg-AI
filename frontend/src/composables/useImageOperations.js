@@ -5,7 +5,12 @@ export function useImageOperations() {
   // 复制图片链接 - 多种格式
   const copyImageLink = async (image, format = 'url') => {
     // 优先使用短链，如果不存在则使用原始URL
-    const baseUrl = image.shortLinkUrl || (window.location.origin + image.url)
+    // 如果 image.url 已经是完整 URL（包含 http:// 或 https://），直接使用
+    // 否则拼接前端域名（兼容旧数据）
+    const imageUrl = image.url.startsWith('http://') || image.url.startsWith('https://')
+      ? image.url
+      : (window.location.origin + image.url)
+    const baseUrl = image.shortLinkUrl || imageUrl
     const displayName = image.originalName || image.fileName
     let textToCopy = ''
 

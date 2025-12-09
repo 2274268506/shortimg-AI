@@ -33,10 +33,21 @@ func InitImageController(c *config.Config) {
 	cfg = c
 }
 
-// generateImageURL 生成优雅的图片 URL
+// generateImageURL 生成图片路径（只存储路径，不包含域名）
 func generateImageURL(imageUUID string) string {
-	// 使用 UUID 作为路径，更安全且避免中文文件名问题
+	// 只返回相对路径，数据库中存储 /i/uuid
 	return fmt.Sprintf("/i/%s", imageUUID)
+}
+
+// buildImageURL 构建完整的图片访问URL（用于返回给前端）
+func buildImageURL(imagePath string) string {
+	cfg := config.GetConfig()
+	// 如果已经是完整URL，直接返回
+	if strings.HasPrefix(imagePath, "http://") || strings.HasPrefix(imagePath, "https://") {
+		return imagePath
+	}
+	// 拼接后端公开访问地址
+	return cfg.BackendPublicURL + imagePath
 }
 
 // UploadImage 上传图片
@@ -177,7 +188,7 @@ func UploadImage(c *gin.Context) {
 	// 清除缓存，确保上传后立即可见
 	clearImageListCache(uint64(albumID))
 
-	// 构造返回的URL
+	// 构造返回的URL（数据库存相对路径）
 	imageRecord.URL = generateImageURL(imageRecord.UUID)
 
 	// 检查是否需要生成短链
@@ -232,6 +243,9 @@ func UploadImage(c *gin.Context) {
 			logger.Error("生成短链失败", zap.Error(err), zap.String("base_url", cfg.ShortLinkBaseURL))
 		}
 	}
+
+	// 返回前将相对路径转换为完整URL
+	imageRecord.URL = buildImageURL(imageRecord.URL)
 
 	c.JSON(http.StatusCreated, gin.H{"data": imageRecord})
 }
@@ -357,6 +371,8 @@ func GetImages(c *gin.Context) {
 			}
 			images[i].ShortLinkURL = fmt.Sprintf("%s/%s", shortLinkHost, images[i].ShortLinkCode)
 		}
+		// 返回前将相对路径转换为完整URL
+		images[i].URL = buildImageURL(images[i].URL)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": images, "total": total, "page": page, "pageSize": pageSize})
@@ -383,6 +399,9 @@ func GetImage(c *gin.Context) {
 		}
 		imageRecord.ShortLinkURL = fmt.Sprintf("%s/%s", shortLinkHost, imageRecord.ShortLinkCode)
 	}
+	// 返回前将相对路径转换为完整URL
+	imageRecord.URL = buildImageURL(imageRecord.URL)
+
 	c.JSON(http.StatusOK, gin.H{"data": imageRecord})
 }
 
@@ -703,6 +722,11 @@ func BatchUpload(c *gin.Context) {
 					idx, img.ID, img.ShortLinkCode, img.ShortLinkURL)
 			}
 		}
+	}
+
+	// 返回前，将所有图片的相对路径转换为完整URL
+	for i := range uploadedImages {
+		uploadedImages[i].URL = buildImageURL(uploadedImages[i].URL)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
