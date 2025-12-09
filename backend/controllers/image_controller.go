@@ -469,16 +469,17 @@ func DeleteImage(c *gin.Context) {
 		fmt.Printf("删除文件失败: %v\n", err)
 	}
 
-	// 如果有短链,删除短链
+	// 如果有短链,删除短链(硬删除)
 	if imageRecord.ShortLinkCode != "" {
 		cfg := config.GetConfig()
 		if cfg.ShortLinkEnabled {
 			shortLinkClient := utils.NewShortLinkClient(cfg.ShortLinkBaseURL, cfg.ShortLinkAPIKey)
-			if err := shortLinkClient.DeleteShortLink(imageRecord.ShortLinkCode); err != nil {
+			// 使用硬删除,永久删除短链记录
+			if err := shortLinkClient.DeleteShortLinkWithMode(imageRecord.ShortLinkCode, true); err != nil {
 				// 记录错误但继续删除图片
 				fmt.Printf("删除短链失败 %s: %v\n", imageRecord.ShortLinkCode, err)
 			} else {
-				fmt.Printf("✅ 已删除短链: %s\n", imageRecord.ShortLinkCode)
+				fmt.Printf("✅ 已永久删除短链: %s\n", imageRecord.ShortLinkCode)
 			}
 		}
 	}

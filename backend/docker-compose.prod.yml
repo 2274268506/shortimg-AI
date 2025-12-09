@@ -134,9 +134,12 @@ services:
       LOG_MAX_AGE: 30
       LOG_MAX_BACKUPS: 10
       
-      # 短链服务配置
+      # 短链服务配置（与 redirect-service 通信）
       SHORT_LINK_ENABLED: ${SHORT_LINK_ENABLED:-true}
-      SHORT_LINK_BASE_URL: ${SHORT_LINK_BASE_URL:-https://your-domain.com/s}
+      SHORT_LINK_BASE_URL: ${SHORT_LINK_BASE_URL:-http://shortlink-openresty-prod}
+      SHORT_LINK_PUBLIC_URL: ${SHORT_LINK_PUBLIC_URL:-https://s.yourdomain.com}
+      SHORT_LINK_API_KEY: ${SHORT_LINK_API_KEY}
+      SHORT_LINK_EXPIRE: ${SHORT_LINK_EXPIRE:-0}
       
       # CORS 配置
       CORS_ENABLED: "true"

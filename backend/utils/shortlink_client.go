@@ -269,11 +269,20 @@ func (c *ShortLinkClient) UpdateMetadata(code string, metadata map[string]interf
 
 // DeleteShortLink 删除短链接
 func (c *ShortLinkClient) DeleteShortLink(code string) error {
+	return c.DeleteShortLinkWithMode(code, false)
+}
+
+// DeleteShortLinkWithMode 删除短链接(支持软删除和硬删除)
+func (c *ShortLinkClient) DeleteShortLinkWithMode(code string, permanent bool) error {
 	if code == "" {
 		return fmt.Errorf("短链接代码不能为空")
 	}
 
 	url := fmt.Sprintf("%s/api/v2/imagebed/%s", c.BaseURL, code)
+	if permanent {
+		url += "?permanent=true"
+	}
+
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return fmt.Errorf("创建请求失败: %w", err)
