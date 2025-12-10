@@ -770,8 +770,10 @@ function _M.stats_overview()
         end
     end
 
-    -- 估算独立访客数（简化版：访问量的70%，确保是整数）
-    local unique_visitors = math.floor(tonumber(total_visits) * 0.7)
+    -- 从Redis获取今日独立访客数（基于IP去重）
+    local redis_client = require "storage.redis_client"
+    local visitor_key = "unique_visitors:" .. os.date("%Y-%m-%d")
+    local unique_visitors = redis_client.scard(visitor_key) or 0
 
     return respond_success({
         total_links = tonumber(total_links) or 0,

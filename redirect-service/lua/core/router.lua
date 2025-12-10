@@ -373,13 +373,38 @@ function _M.redirect()
     end
 
     -- 记录访问日志（异步）
-    ngx.timer.at(0, function()
-        -- 简单日志记录，不调用可能不存在的log_access方法
-        logger.info("Access: " .. short_code .. " -> " .. (target_url or "N/A"))
-
-        -- 更新统计
-        metrics.incr("redirect_count")
-        metrics.incr("redirect:" .. short_code)
+    ngx.timer.at(0, function(premature)
+        if premature then
+            return
+        end
+        
+        -- 在timer中重新require模块以确保可用性
+        local logger_async = require "utils.logger"
+        local metrics_async = require "utils.metrics"
+        local mysql_async = require "storage.mysql_client"
+        local redis_async = require "storage.redis_client"
+        
+        -- 更新Redis统计
+        metrics_async.incr("redirect_count")
+        metrics_async.incr("redirect:" .. short_code)
+        
+        -- 记录独立访客（使用Redis Set存储唯一IP）
+        local client_ip = client_info.ip
+        if client_ip then
+            local visitor_key = "unique_visitors:" .. os.date("%Y-%m-%d")
+            redis_async.sadd(visitor_key, client_ip)
+            redis_async.expire(visitor_key, 86400 * 7)  -- 7天过期
+        end
+        
+        -- 更新MySQL的visit_count（直接自增）
+        local update_sql = "UPDATE short_links SET visit_count = visit_count + 1, updated_at = NOW() WHERE short_code = ?"
+        local result, err = mysql_async.query(update_sql, {short_code})
+        if err then
+            logger_async.error("❌ Failed to update visit_count for " .. short_code .. ": " .. (err or "unknown"))
+        else
+            -- 使用warn级别确保能看到日志
+            logger_async.warn("✅ Updated visit_count for: " .. short_code .. " (IP: " .. (client_ip or "unknown") .. ")")
+        end
     end)
 
     -- 执行 302 重定向

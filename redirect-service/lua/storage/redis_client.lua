@@ -256,6 +256,44 @@ function _M.expire(key, seconds)
     return true, nil
 end
 
+-- SADD 操作（添加成员到集合）
+function _M.sadd(key, member)
+    local red, err = connect()
+    if not red then
+        logger.error("Redis连接失败: " .. err)
+        return false, err
+    end
+
+    local res, err = red:sadd(key, member)
+    keepalive(red)
+
+    if not res then
+        logger.error("Redis SADD失败: " .. (err or "unknown"))
+        return false, err
+    end
+
+    return true, nil
+end
+
+-- SCARD 操作（获取集合成员数量）
+function _M.scard(key)
+    local red, err = connect()
+    if not red then
+        logger.error("Redis连接失败: " .. err)
+        return 0, err
+    end
+
+    local res, err = red:scard(key)
+    keepalive(red)
+
+    if not res then
+        logger.error("Redis SCARD失败: " .. (err or "unknown"))
+        return 0, err
+    end
+
+    return res, nil
+end
+
 -- 初始化配置
 function _M.init(conf)
     if conf then
