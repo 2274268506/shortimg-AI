@@ -121,15 +121,7 @@ function validateCurrentStep() {
   const step = currentStep;
 
   if (step === 1) {
-    const shortCode = document.getElementById('short_code')?.value.trim();
-    if (!shortCode) {
-      alert('请输入短链代码');
-      return false;
-    }
-    if (!/^[a-zA-Z0-9\-_]+$/.test(shortCode)) {
-      alert('短链代码只能包含字母、数字、横线和下划线');
-      return false;
-    }
+    // 第一步：验证服务类型
     const serviceType = document.getElementById('service_type')?.value;
     if (!serviceType) {
       alert('请选择服务类型');
@@ -138,16 +130,29 @@ function validateCurrentStep() {
   }
 
   if (step === 2) {
-    const simpleUrl = document.getElementById('simple_url')?.value.trim();
-    if (!simpleUrl) {
-      alert('请输入目标URL');
-      return false;
-    }
-    try {
-      new URL(simpleUrl);
-    } catch {
-      alert('请输入有效的URL');
-      return false;
+    // 第二步：根据服务类型验证目标URL或路径
+    const serviceType = document.getElementById('service_type')?.value;
+    
+    if (serviceType === 'general') {
+      // 通用类型：验证完整URL
+      const url = document.getElementById('target_url')?.value.trim();
+      if (!url) {
+        alert('请输入目标URL');
+        return false;
+      }
+      try {
+        new URL(url);
+      } catch {
+        alert('请输入有效的完整URL（如：https://www.baidu.com）');
+        return false;
+      }
+    } else {
+      // 其他类型：验证资源路径
+      const path = document.getElementById('target_path')?.value.trim();
+      if (!path) {
+        alert('请输入资源路径');
+        return false;
+      }
     }
   }
 

@@ -307,6 +307,91 @@ function _M.create_generic()
     })
 end
 
+-- 统一创建短链（支持所有类型：general, imagebed, file, video）
+function _M.create_universal()
+    local data, err = read_body()
+    if not data then return respond_error(err) end
+
+    local service_type = data.service_type or "general"
+    local targets = data.targets
+    local strategy = data.strategy or "weight"
+    local description = data.description
+    local expires_at = data.expires_at
+    local security_config = data.security_config or {}
+
+    -- 验证targets
+    if not targets or type(targets) ~= "table" or #targets == 0 then
+        return respond_error("缺少 targets 字段或格式不正确")
+    end
+
+    -- 根据服务类型生成带前缀的短链码
+    local prefix_map = {
+        imagebed = "img-",
+        file = "file-",
+        video = "vid-",
+        general = ""
+    }
+    
+    local prefix = prefix_map[service_type] or ""
+    local code = generate_unique_code(prefix, 12)
+    
+    if not code then
+        return respond_error("生成唯一代码失败", 500)
+    end
+
+    -- 序列化targets和security_config
+    local targets_json = cjson.encode(targets)
+    local security_json = security_config and cjson.encode(security_config) or nil
+
+    -- 插入数据库
+    local sql, params
+    
+    if expires_at then
+        sql = [[
+            INSERT INTO short_links(
+                short_code, targets, strategy, service_type, 
+                expires_at, security_config,
+                created_at, updated_at, visit_count, status
+            ) VALUES(?, ?, ?, ?, ?, ?, NOW(), NOW(), 0, 'active')
+        ]]
+        params = {code, targets_json, strategy, service_type, expires_at, security_json}
+    else
+        sql = [[
+            INSERT INTO short_links(
+                short_code, targets, strategy, service_type,
+                security_config,
+                created_at, updated_at, visit_count, status
+            ) VALUES(?, ?, ?, ?, ?, NOW(), NOW(), 0, 'active')
+        ]]
+        params = {code, targets_json, strategy, service_type, security_json}
+    end
+
+    local res, db_err = mysql_client.query(sql, params)
+    if not res then
+        logger.error("创建短链失败: " .. (db_err or "unknown"))
+        return respond_error("创建失败: " .. (db_err or "数据库错误"), 500)
+    end
+
+    -- 写入Redis缓存
+    redis_client.set("short_link:" .. code, cjson.encode({
+        targets = targets,
+        strategy = strategy,
+        service_type = service_type,
+        security_config = security_config
+    }), 3600)
+
+    logger.info("创建短链成功: " .. code .. " (类型: " .. service_type .. ")")
+
+    return respond_success({
+        short_code = code,
+        short_url = ngx.var.scheme .. "://" .. ngx.var.host .. "/" .. code,
+        service_type = service_type,
+        targets = targets,
+        expires_at = expires_at,
+        created_at = ngx.localtime()
+    })
+end
+
 -- 获取短链列表
 function _M.list()
     local args = ngx.req.get_uri_args()
@@ -738,8 +823,11 @@ function _M.handle()
     
     -- POST 请求 - 创建
     elseif method == "POST" then
+        -- V2 统一短链创建 API (支持所有类型)
+        if uri == "/api/v2/imagebed" then
+            return _M.create_universal()
         -- V2 图床 API 路由
-        if uri:match("^/api/v2/imagebed/create$") then
+        elseif uri:match("^/api/v2/imagebed/create$") then
             return _M.create()
         elseif uri:match("^/api/v2/imagebed/batch$") then
             return _M.batch_create()

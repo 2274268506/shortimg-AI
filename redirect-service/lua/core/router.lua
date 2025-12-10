@@ -209,49 +209,78 @@ local function verify_token(token, short_code)
     return true
 end
 
--- 选择目标服务器（根据 service_type 区分处理）
+-- 选择目标服务器（根据 service_type 区分处理，集成路由引擎）
 local function select_target(link_data, client_info)
     local targets = link_data.targets
-    local service_type = link_data.service_type
+    local service_type = link_data.service_type or "general"
+    local routing_engine = require "routing_engine"
     
     if not targets then
         return nil
     end
+    
+    -- 如果targets是字符串，尝试解析为JSON
+    if type(targets) == "string" then
+        local ok, parsed = pcall(require("cjson").decode, targets)
+        if ok and parsed then
+            targets = parsed
+        end
+    end
+
+    -- 构建请求信息
+    local request_info = {
+        service_type = service_type,
+        path = ngx_var.request_uri or "/",
+        short_code = link_data.short_code
+    }
 
     -- 根据 service_type 判断处理方式：
-    -- - imagebed（图片）、file（文件）、video（视频）: targets 是路径字符串，需要动态拼接CDN域名
-    -- - general/generic（通用）: targets 是完整URL数组，直接使用
+    -- - imagebed（图片）、file（文件）、video（视频）: targets 可能是路径字符串或数组
+    -- - general/generic（通用）: targets 是完整URL数组
     
     if service_type == "imagebed" or service_type == "file" or service_type == "video" then
-        -- 图床类短链：targets 是路径字符串（如 "/i/uuid"）
-        -- 根据分流规则选择CDN节点，然后拼接域名和路径
-        if type(targets) == "string" then
-            local cdn_builder = require "utils.cdn_builder"
-            
-            -- 使用策略确定是否启用地理路由
-            local enable_geo_routing = (link_data.strategy == "geo")
-            
-            -- 调用 CDN 构建器生成完整URL列表
-            local link_config = cdn_builder.build_image_targets(targets, enable_geo_routing)
-            
-            if not link_config or not link_config.targets or #link_config.targets == 0 then
-                logger.error("Failed to build CDN targets for " .. service_type .. " path: " .. targets)
+        -- 使用路由引擎选择CDN节点
+        local cdn_id = routing_engine.select_cdn(client_info, request_info)
+        logger.info(string.format("[%s] Selected CDN: %s", service_type, cdn_id))
+        
+        -- 判断targets类型
+        if type(targets) == "table" and #targets > 0 then
+            -- targets是数组，取第一个元素的path
+            local path = targets[1].path or targets[1].url
+            if not path then
+                logger.error("No path found in targets array for " .. service_type)
                 return link_data.fallback_url
             end
             
-            -- 使用高级路由策略选择目标
-            local strategy_name = link_config.strategy or "weight"
-            logger.info(string.format("Using routing strategy: %s for %s path: %s", strategy_name, service_type, targets))
+            -- 使用路由引擎构建完整URL
+            local final_url = routing_engine.build_url(cdn_id, path)
             
-            local target = strategies.select(strategy_name, link_config.targets, client_info)
-            return target and target.url or link_config.targets[1].url
+            if not final_url then
+                logger.error("Failed to build URL from CDN: " .. tostring(cdn_id) .. " for path: " .. path)
+                return link_data.fallback_url
+            end
+            
+            logger.info(string.format("[%s] Final URL: %s", service_type, final_url))
+            return final_url
+            
+        elseif type(targets) == "string" then
+            -- targets是字符串路径
+            local final_url = routing_engine.build_url(cdn_id, targets)
+            
+            if not final_url then
+                logger.error("Failed to build URL from CDN: " .. tostring(cdn_id) .. " for path: " .. targets)
+                return link_data.fallback_url
+            end
+            
+            logger.info(string.format("[%s] Final URL: %s", service_type, final_url))
+            return final_url
         else
-            logger.error("Invalid targets format for " .. service_type .. ": expected string, got " .. type(targets))
+            logger.error("Invalid targets format for " .. service_type .. ": " .. type(targets))
             return link_data.fallback_url
         end
         
     elseif service_type == "general" or service_type == "generic" then
-        -- 通用短链：targets 是完整URL数组（如 [{"url": "http://..."}]）
+        -- 通用短链：targets 是完整URL数组
         if type(targets) == "table" and #targets > 0 then
             local healthy_targets = {}
             for _, target in ipairs(targets) do
@@ -345,12 +374,8 @@ function _M.redirect()
 
     -- 记录访问日志（异步）
     ngx.timer.at(0, function()
-        logger.log_access({
-            short_code = short_code,
-            client_info = client_info,
-            target_url = target_url,
-            timestamp = ngx_time()
-        })
+        -- 简单日志记录，不调用可能不存在的log_access方法
+        logger.info("Access: " .. short_code .. " -> " .. (target_url or "N/A"))
 
         -- 更新统计
         metrics.incr("redirect_count")

@@ -35,7 +35,9 @@
 # 环境变量配置位置: .env 文件
 
 cdn_nodes:
-  # 私有网络（内网/开发环境）
+  # ========================================
+  # 私有网络节点
+  # ========================================
   - id: private
     name: 私有网络CDN
     domain_env: CDN_PRIVATE_DOMAIN
@@ -45,67 +47,187 @@ cdn_nodes:
     default_protocol: http
     default_port: 8080
 
-  # 联通CDN（中国联通用户）
-  - id: unicom
-    name: 联通CDN
-    domain_env: CDN_UNICOM_DOMAIN
-    protocol_env: CDN_UNICOM_PROTOCOL
-    port_env: CDN_UNICOM_PORT
+  # ========================================
+  # 图床服务器群组（联通/移动/电信）
+  # ========================================
+  - id: imagebed_unicom
+    name: 图床联通CDN
+    domain_env: CDN_IMAGEBED_UNICOM_DOMAIN
+    protocol_env: CDN_IMAGEBED_UNICOM_PROTOCOL
+    port_env: CDN_IMAGEBED_UNICOM_PORT
+    default_domain: img-unicom.example.com
+    default_protocol: https
+
+  - id: imagebed_mobile
+    name: 图床移动CDN
+    domain_env: CDN_IMAGEBED_MOBILE_DOMAIN
+    protocol_env: CDN_IMAGEBED_MOBILE_PROTOCOL
+    port_env: CDN_IMAGEBED_MOBILE_PORT
+    default_domain: img-mobile.example.com
+    default_protocol: https
+
+  - id: imagebed_telecom
+    name: 图床电信CDN
+    domain_env: CDN_IMAGEBED_TELECOM_DOMAIN
+    protocol_env: CDN_IMAGEBED_TELECOM_PROTOCOL
+    port_env: CDN_IMAGEBED_TELECOM_PORT
+    default_domain: img-telecom.example.com
+    default_protocol: https
+
+  - id: imagebed_overseas
+    name: 图床海外CDN
+    domain_env: CDN_IMAGEBED_OVERSEAS_DOMAIN
+    protocol_env: CDN_IMAGEBED_OVERSEAS_PROTOCOL
+    port_env: CDN_IMAGEBED_OVERSEAS_PORT
+    default_domain: img-overseas.example.com
+    default_protocol: https
+
+  - id: imagebed_default
+    name: 图床默认CDN
+    domain_env: CDN_IMAGEBED_DEFAULT_DOMAIN
+    protocol_env: CDN_IMAGEBED_DEFAULT_PROTOCOL
+    port_env: CDN_IMAGEBED_DEFAULT_PORT
+    default_domain: img-cdn.example.com
+    default_protocol: https
+
+  # ========================================
+  # 文件服务器群组（联通/移动/电信）
+  # ========================================
+  - id: file_unicom
+    name: 文件联通CDN
+    domain_env: CDN_FILE_UNICOM_DOMAIN
+    protocol_env: CDN_FILE_UNICOM_PROTOCOL
+    port_env: CDN_FILE_UNICOM_PORT
+    default_domain: file-unicom.example.com
+    default_protocol: https
+
+  - id: file_mobile
+    name: 文件移动CDN
+    domain_env: CDN_FILE_MOBILE_DOMAIN
+    protocol_env: CDN_FILE_MOBILE_PROTOCOL
+    port_env: CDN_FILE_MOBILE_PORT
+    default_domain: file-mobile.example.com
+    default_protocol: https
+
+  - id: file_telecom
+    name: 文件电信CDN
+    domain_env: CDN_FILE_TELECOM_DOMAIN
+    protocol_env: CDN_FILE_TELECOM_PROTOCOL
+    port_env: CDN_FILE_TELECOM_PORT
+    default_domain: file-telecom.example.com
+    default_protocol: https
+
+  - id: file_overseas
+    name: 文件海外CDN
+    domain_env: CDN_FILE_OVERSEAS_DOMAIN
+    protocol_env: CDN_FILE_OVERSEAS_PROTOCOL
+    port_env: CDN_FILE_OVERSEAS_PORT
+    default_domain: file-overseas.example.com
+    default_protocol: https
+
+  - id: file_default
+    name: 文件默认CDN
+    domain_env: CDN_FILE_DEFAULT_DOMAIN
+    protocol_env: CDN_FILE_DEFAULT_PROTOCOL
+    port_env: CDN_FILE_DEFAULT_PORT
+    default_domain: file-cdn.example.com
+    default_protocol: https
+
+  # ========================================
+  # 视频服务器群组（联通/移动/电信）
+  # ========================================
+  - id: video_unicom
+    name: 视频联通CDN
+    domain_env: CDN_VIDEO_UNICOM_DOMAIN
+    protocol_env: CDN_VIDEO_UNICOM_PROTOCOL
+    port_env: CDN_VIDEO_UNICOM_PORT
+    default_domain: video-unicom.example.com
+    default_protocol: https
+
+  - id: video_mobile
+    name: 视频移动CDN
+    domain_env: CDN_VIDEO_MOBILE_DOMAIN
+    protocol_env: CDN_VIDEO_MOBILE_PROTOCOL
+    port_env: CDN_VIDEO_MOBILE_PORT
+    default_domain: video-mobile.example.com
+    default_protocol: https
+
+  - id: video_telecom
+    name: 视频电信CDN
+    domain_env: CDN_VIDEO_TELECOM_DOMAIN
+    protocol_env: CDN_VIDEO_TELECOM_PROTOCOL
+    port_env: CDN_VIDEO_TELECOM_PORT
+    default_domain: video-telecom.example.com
+    default_protocol: https
+
+  - id: video_overseas
+    name: 视频海外CDN
+    domain_env: CDN_VIDEO_OVERSEAS_DOMAIN
+    protocol_env: CDN_VIDEO_OVERSEAS_PROTOCOL
+    port_env: CDN_VIDEO_OVERSEAS_PORT
+    default_domain: video-overseas.example.com
+    default_protocol: https
+
+  - id: video_default
+    name: 视频默认CDN
+    domain_env: CDN_VIDEO_DEFAULT_DOMAIN
+    protocol_env: CDN_VIDEO_DEFAULT_PROTOCOL
+    port_env: CDN_VIDEO_DEFAULT_PORT
+    default_domain: video-cdn.example.com
+    default_protocol: https
+
+  # ========================================
+  # 通用服务器节点
+  # ========================================
+  - id: general_unicom
+    name: 通用联通CDN
+    domain_env: CDN_GENERAL_UNICOM_DOMAIN
+    protocol_env: CDN_GENERAL_UNICOM_PROTOCOL
+    port_env: CDN_GENERAL_UNICOM_PORT
     default_domain: cdn-unicom.example.com
     default_protocol: https
 
-  # 移动CDN（中国移动用户）
-  - id: mobile
-    name: 移动CDN
-    domain_env: CDN_MOBILE_DOMAIN
-    protocol_env: CDN_MOBILE_PROTOCOL
-    port_env: CDN_MOBILE_PORT
+  - id: general_mobile
+    name: 通用移动CDN
+    domain_env: CDN_GENERAL_MOBILE_DOMAIN
+    protocol_env: CDN_GENERAL_MOBILE_PROTOCOL
+    port_env: CDN_GENERAL_MOBILE_PORT
     default_domain: cdn-mobile.example.com
     default_protocol: https
 
-  # 电信CDN（中国电信用户）
-  - id: telecom
-    name: 电信CDN
-    domain_env: CDN_TELECOM_DOMAIN
-    protocol_env: CDN_TELECOM_PROTOCOL
-    port_env: CDN_TELECOM_PORT
+  - id: general_telecom
+    name: 通用电信CDN
+    domain_env: CDN_GENERAL_TELECOM_DOMAIN
+    protocol_env: CDN_GENERAL_TELECOM_PROTOCOL
+    port_env: CDN_GENERAL_TELECOM_PORT
     default_domain: cdn-telecom.example.com
     default_protocol: https
 
-  # 国内CDN（国内通用节点）
-  - id: china
-    name: 国内CDN
-    domain_env: CDN_CHINA_DOMAIN
-    protocol_env: CDN_CHINA_PROTOCOL
-    port_env: CDN_CHINA_PORT
-    default_domain: cdn-china.example.com
-    default_protocol: https
-
-  # 国外CDN（海外用户）
-  - id: overseas
-    name: 国外CDN
-    domain_env: CDN_OVERSEAS_DOMAIN
-    protocol_env: CDN_OVERSEAS_PROTOCOL
-    port_env: CDN_OVERSEAS_PORT
+  - id: general_overseas
+    name: 通用海外CDN
+    domain_env: CDN_GENERAL_OVERSEAS_DOMAIN
+    protocol_env: CDN_GENERAL_OVERSEAS_PROTOCOL
+    port_env: CDN_GENERAL_OVERSEAS_PORT
     default_domain: cdn-overseas.example.com
     default_protocol: https
 
-  # 备用CDN（备份节点）
+  - id: general_default
+    name: 通用默认CDN
+    domain_env: CDN_GENERAL_DEFAULT_DOMAIN
+    protocol_env: CDN_GENERAL_DEFAULT_PROTOCOL
+    port_env: CDN_GENERAL_DEFAULT_PORT
+    default_domain: cdn.example.com
+    default_protocol: https
+
+  # ========================================
+  # 备用节点
+  # ========================================
   - id: backup
     name: 备用CDN
     domain_env: CDN_BACKUP_DOMAIN
     protocol_env: CDN_BACKUP_PROTOCOL
     port_env: CDN_BACKUP_PORT
     default_domain: cdn-backup.example.com
-    default_protocol: https
-
-  # 默认CDN（降级/兜底节点）
-  - id: default
-    name: 默认CDN
-    domain_env: CDN_DEFAULT_DOMAIN
-    protocol_env: CDN_DEFAULT_PROTOCOL
-    port_env: CDN_DEFAULT_PORT
-    default_domain: cdn.example.com
     default_protocol: https
 
 # ========================================
@@ -138,9 +260,8 @@ cdn_nodes:
 
 routing_rules:
   # ========================================
-  # 规则1: 内网IP使用私有CDN
+  # 规则1: 内网IP使用私有CDN（所有类型）
   # 优先级: 10（最高）
-  # 场景: 开发环境、办公网络
   # ========================================
   - name: 内网IP路由
     priority: 10
@@ -148,92 +269,267 @@ routing_rules:
     conditions:
       - type: ip_range
         ranges:
-          - 10.0.0.0/8          # A类私有网络
-          - 172.16.0.0/12       # B类私有网络
-          - 192.168.0.0/16      # C类私有网络
-          - 127.0.0.0/8         # 本地回环
+          - 10.0.0.0/8
+          - 172.16.0.0/12
+          - 192.168.0.0/16
+          - 127.0.0.0/8
     target: private
 
   # ========================================
-  # 规则2: 电信用户使用电信CDN
-  # 优先级: 20
-  # 场景: 优化电信用户访问速度
+  # 图床短链路由规则（priority 20-29）
   # ========================================
-  - name: 电信用户
+  # 规则2: 图床 + 电信用户
+  - name: 图床_电信
     priority: 20
     enabled: true
     conditions:
+      - type: service_type
+        value: imagebed
       - type: isp
         values:
           - China Telecom
           - ChinaNet
           - 电信
-    target: telecom
+    target: imagebed_telecom
 
-  # ========================================
-  # 规则3: 联通用户使用联通CDN
-  # 优先级: 30
-  # 场景: 优化联通用户访问速度
-  # ========================================
-  - name: 联通用户
-    priority: 30
+  # 规则3: 图床 + 联通用户
+  - name: 图床_联通
+    priority: 21
     enabled: true
     conditions:
+      - type: service_type
+        value: imagebed
       - type: isp
         values:
           - China Unicom
           - 联通
-    target: unicom
+    target: imagebed_unicom
 
-  # ========================================
-  # 规则4: 移动用户使用移动CDN
-  # 优先级: 40
-  # 场景: 优化移动用户访问速度
-  # ========================================
-  - name: 移动用户
-    priority: 40
+  # 规则4: 图床 + 移动用户
+  - name: 图床_移动
+    priority: 22
     enabled: true
     conditions:
+      - type: service_type
+        value: imagebed
       - type: isp
         values:
           - China Mobile
           - 移动
-    target: mobile
+    target: imagebed_mobile
 
-  # ========================================
-  # 规则5: 海外IP使用国外CDN
-  # 优先级: 50
-  # 场景: 国际用户访问加速
-  # ========================================
-  - name: 海外访问
-    priority: 50
+  # 规则5: 图床 + 海外用户
+  - name: 图床_海外
+    priority: 23
     enabled: true
     conditions:
+      - type: service_type
+        value: imagebed
       - type: country
         operator: not_equals
         value: CN
-    target: overseas
+    target: imagebed_overseas
 
-  # ========================================
-  # 规则6: 国内其他用户使用国内CDN
-  # 优先级: 60
-  # 场景: 国内非三大运营商用户
-  # ========================================
-  - name: 国内通用
-    priority: 60
+  # 规则6: 图床 + 国内其他用户
+  - name: 图床_国内默认
+    priority: 24
     enabled: true
     conditions:
-      - type: country
-        value: CN
-    target: china
+      - type: service_type
+        value: imagebed
+    target: imagebed_default
 
   # ========================================
-  # 规则7: 时间段路由（示例：夜间使用备份服务器）
+  # 文件短链路由规则（priority 30-39）
   # ========================================
-  - name: 夜间备份路由
-    priority: 70
-    enabled: false  # 默认禁用
+  # 规则7: 文件 + 电信用户
+  - name: 文件_电信
+    priority: 30
+    enabled: true
     conditions:
+      - type: service_type
+        value: file
+      - type: isp
+        values:
+          - China Telecom
+          - ChinaNet
+          - 电信
+    target: file_telecom
+
+  # 规则8: 文件 + 联通用户
+  - name: 文件_联通
+    priority: 31
+    enabled: true
+    conditions:
+      - type: service_type
+        value: file
+      - type: isp
+        values:
+          - China Unicom
+          - 联通
+    target: file_unicom
+
+  # 规则9: 文件 + 移动用户
+  - name: 文件_移动
+    priority: 32
+    enabled: true
+    conditions:
+      - type: service_type
+        value: file
+      - type: isp
+        values:
+          - China Mobile
+          - 移动
+    target: file_mobile
+
+  # 规则10: 文件 + 海外用户
+  - name: 文件_海外
+    priority: 33
+    enabled: true
+    conditions:
+      - type: service_type
+        value: file
+      - type: country
+        operator: not_equals
+        value: CN
+    target: file_overseas
+
+  # 规则11: 文件 + 国内其他用户
+  - name: 文件_国内默认
+    priority: 34
+    enabled: true
+    conditions:
+      - type: service_type
+        value: file
+    target: file_default
+
+  # ========================================
+  # 视频短链路由规则（priority 40-49）
+  # ========================================
+  # 规则12: 视频 + 电信用户
+  - name: 视频_电信
+    priority: 40
+    enabled: true
+    conditions:
+      - type: service_type
+        value: video
+      - type: isp
+        values:
+          - China Telecom
+          - ChinaNet
+          - 电信
+    target: video_telecom
+
+  # 规则13: 视频 + 联通用户
+  - name: 视频_联通
+    priority: 41
+    enabled: true
+    conditions:
+      - type: service_type
+        value: video
+      - type: isp
+        values:
+          - China Unicom
+          - 联通
+    target: video_unicom
+
+  # 规则14: 视频 + 移动用户
+  - name: 视频_移动
+    priority: 42
+    enabled: true
+    conditions:
+      - type: service_type
+        value: video
+      - type: isp
+        values:
+          - China Mobile
+          - 移动
+    target: video_mobile
+
+  # 规则15: 视频 + 海外用户
+  - name: 视频_海外
+    priority: 43
+    enabled: true
+    conditions:
+      - type: service_type
+        value: video
+      - type: country
+        operator: not_equals
+        value: CN
+    target: video_overseas
+
+  # 规则16: 视频 + 国内其他用户
+  - name: 视频_国内默认
+    priority: 44
+    enabled: true
+    conditions:
+      - type: service_type
+        value: video
+    target: video_default
+
+  # ========================================
+  # 通用短链路由规则（priority 50-59）
+  # ========================================
+  # 规则17: 通用 + 电信用户
+  - name: 通用_电信
+    priority: 50
+    enabled: true
+    conditions:
+      - type: service_type
+        value: general
+      - type: isp
+        values:
+          - China Telecom
+          - ChinaNet
+          - 电信
+    target: general_telecom
+
+  # 规则18: 通用 + 联通用户
+  - name: 通用_联通
+    priority: 51
+    enabled: true
+    conditions:
+      - type: service_type
+        value: general
+      - type: isp
+        values:
+          - China Unicom
+          - 联通
+    target: general_unicom
+
+  # 规则19: 通用 + 移动用户
+  - name: 通用_移动
+    priority: 52
+    enabled: true
+    conditions:
+      - type: service_type
+        value: general
+      - type: isp
+        values:
+          - China Mobile
+          - 移动
+    target: general_mobile
+
+  # 规则20: 通用 + 海外用户
+  - name: 通用_海外
+    priority: 53
+    enabled: true
+    conditions:
+      - type: service_type
+        value: general
+      - type: country
+        operator: not_equals
+        value: CN
+    target: general_overseas
+
+  # 规则21: 通用 + 国内其他用户
+  - name: 通用_国内默认
+    priority: 54
+    enabled: true
+    conditions:
+      - type: service_type
+        value: general
+    target: general_default
   # ========================================
   # 高级规则示例（默认禁用，按需启用）
   # ========================================
@@ -299,14 +595,32 @@ routing_rules:
 #   3. 所有CDN都不可用时返回错误
 
 default_routing:
-  # 默认目标CDN（推荐使用最稳定的节点）
-  target: default
+  # 默认目标CDN（通用默认节点）
+  target: general_default
 
-  # 降级链（从左到右依次尝试）
-  fallback_chain:
-    - china         # 首选: 国内CDN
-    - backup        # 次选: 备用CDN
-    - default       # 兜底: 默认CDN
+  # 降级链（按服务类型分别降级）
+  # 图床类型降级顺序
+  imagebed_fallback:
+    - imagebed_default
+    - general_default
+    - backup
+
+  # 文件类型降级顺序
+  file_fallback:
+    - file_default
+    - general_default
+    - backup
+
+  # 视频类型降级顺序
+  video_fallback:
+    - video_default
+    - general_default
+    - backup
+
+  # 通用类型降级顺序
+  general_fallback:
+    - general_default
+    - backup
 
 # ========================================
 # ⚙️ 第四部分: 高级配置

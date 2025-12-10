@@ -1,38 +1,18 @@
 -- routing_engine.lua
 -- 动态路由引擎 - 支持灵活的分流规则配置
 
-local yaml = require "lyaml"
+-- 使用简化配置避免lyaml依赖问题
+local simple_config = require "routing_config_simple"
 local _M = {}
 
 -- 全局缓存
 local routing_config = nil
 local cdn_nodes_map = {}
 local last_load_time = 0
-local config_file_path = "/usr/local/openresty/nginx/conf/routing_rules.yaml"
 
 -- 日志函数
 local function log(level, msg)
     ngx.log(level, "[RoutingEngine] ", msg)
-end
-
--- 加载配置文件
-local function load_config()
-    local file = io.open(config_file_path, "r")
-    if not file then
-        log(ngx.ERR, "无法打开配置文件: " .. config_file_path)
-        return nil
-    end
-
-    local content = file:read("*all")
-    file:close()
-
-    local config = yaml.load(content)
-    if not config then
-        log(ngx.ERR, "配置文件解析失败")
-        return nil
-    end
-
-    return config
 end
 
 -- 初始化CDN节点映射
@@ -40,34 +20,28 @@ local function init_cdn_nodes(nodes)
     cdn_nodes_map = {}
 
     for _, node in ipairs(nodes or {}) do
-        local domain = os.getenv(node.domain_env) or node.default_domain
-        local protocol = os.getenv(node.protocol_env) or node.default_protocol
-        local port = os.getenv(node.port_env) or node.default_port or ""
-
         cdn_nodes_map[node.id] = {
             id = node.id,
             name = node.name,
-            domain = domain,
-            protocol = protocol,
-            port = port
+            domain = node.domain,
+            protocol = node.protocol,
+            port = node.port
         }
     end
 
     log(ngx.INFO, "已加载 " .. #nodes .. " 个CDN节点")
 end
 
--- 获取配置（带缓存）
+-- 获取配置（使用简化配置）
 function _M.get_config(force_reload)
-    local now = ngx.time()
-
-    -- 如果需要强制重载或超过缓存时间
-    if force_reload or not routing_config or (now - last_load_time) > 300 then
-        routing_config = load_config()
-        if routing_config then
-            init_cdn_nodes(routing_config.cdn_nodes)
-            last_load_time = now
-            log(ngx.INFO, "配置已重载")
-        end
+    if not routing_config then
+        routing_config = {
+            cdn_nodes = simple_config.cdn_nodes,
+            routing_rules = simple_config.routing_rules,
+            default_routing = simple_config.default_routing
+        }
+        init_cdn_nodes(routing_config.cdn_nodes)
+        log(ngx.INFO, "配置已加载")
     end
 
     return routing_config
@@ -118,8 +92,12 @@ end
 local function check_condition(condition, client_info, request_info)
     local ctype = condition.type
 
+    -- 服务类型匹配（新增）
+    if ctype == "service_type" then
+        return request_info.service_type == condition.value
+
     -- IP范围匹配
-    if ctype == "ip_range" then
+    elseif ctype == "ip_range" then
         local client_ip = client_info.ip
         for _, range in ipairs(condition.ranges or {}) do
             if ip_in_range(client_ip, range) then

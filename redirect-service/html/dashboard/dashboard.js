@@ -635,9 +635,10 @@ function closeModal(modalId) {
   $(`#${modalId}`).classList.remove('show');
 }
 
-// 提交创建表单
-$('#create-form').addEventListener('submit', async (e) => {
+// 提交创建表单处理函数
+async function handleCreateFormSubmit(e) {
   e.preventDefault();
+  e.stopPropagation();
 
   // 获取表单数据
   const serviceType = $('#service_type').value || 'general';
@@ -653,7 +654,7 @@ $('#create-form').addEventListener('submit', async (e) => {
     const url = $('#target_url').value.trim();
     if (!url) {
       showNotification('请输入目标URL', 'warning');
-      return;
+      return false;
     }
 
     try {
@@ -664,14 +665,14 @@ $('#create-form').addEventListener('submit', async (e) => {
       }];
     } catch (error) {
       showNotification('URL格式不正确，请输入完整URL（如：https://www.baidu.com）', 'error');
-      return;
+      return false;
     }
   } else {
     // 其他类型：使用路径，CDN由后端处理
     const path = $('#target_path').value.trim();
     if (!path) {
       showNotification('请输入资源路径', 'warning');
-      return;
+      return false;
     }
 
     // 确保路径以/开头
@@ -712,7 +713,9 @@ $('#create-form').addEventListener('submit', async (e) => {
   } catch (error) {
     // 错误已在 request 中处理
   }
-});
+  
+  return false;
+}
 
 // 加载统计选项
 async function loadStatsOptions() {
@@ -1038,6 +1041,12 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('⚠️ 未找到 API Key，显示登录界面');
     showApiKeyPrompt();
     return;
+  }
+
+  // 绑定创建表单提交事件
+  const createForm = $('#create-form');
+  if (createForm) {
+    createForm.addEventListener('submit', handleCreateFormSubmit);
   }
 
   // 加载初始数据
