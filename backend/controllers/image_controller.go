@@ -1,10 +1,11 @@
 package controllers
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	_ "image/gif"
-	_ "image/jpeg"
+	"image/jpeg"
 	_ "image/png"
 	"imagebed/cache"
 	"imagebed/config"
@@ -21,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/disintegration/imaging"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -453,6 +455,14 @@ func GetImageThumbnail(c *gin.Context) {
 		return
 	}
 
+	// 获取质量参数，默认80
+	quality := 80
+	if q := c.Query("quality"); q != "" {
+		if qInt, err := strconv.Atoi(q); err == nil && qInt >= 50 && qInt <= 100 {
+			quality = qInt
+		}
+	}
+
 	// 如果有缩略图则返回缩略图，否则返回原图
 	thumbnailPath := imageRecord.Thumbnail
 	if thumbnailPath == "" || !fileExists(thumbnailPath) {
@@ -464,6 +474,25 @@ func GetImageThumbnail(c *gin.Context) {
 		return
 	}
 
+	// 如果质量不是默认值(80)，则动态生成指定质量的缩略图
+	if quality != 80 {
+		// 读取图片
+		img, err := imaging.Open(thumbnailPath)
+		if err == nil {
+			// 设置响应头
+			c.Header("Content-Type", "image/jpeg")
+			c.Header("Cache-Control", "public, max-age=31536000")
+
+			// 编码并输出
+			buf := new(bytes.Buffer)
+			if err := jpeg.Encode(buf, img, &jpeg.Options{Quality: quality}); err == nil {
+				c.Data(http.StatusOK, "image/jpeg", buf.Bytes())
+				return
+			}
+		}
+	}
+
+	// 默认返回原缩略图文件
 	c.File(thumbnailPath)
 }
 

@@ -3,13 +3,36 @@ import { ref } from 'vue'
 import * as api from '@/api'
 import type { Album, Image } from '@/types'
 
+// 从 LocalStorage 加载显示设置
+const loadDisplaySettings = () => {
+  const saved = localStorage.getItem('display-settings')
+  if (saved) {
+    try {
+      return JSON.parse(saved)
+    } catch (e) {
+      console.error('Failed to parse display settings:', e)
+    }
+  }
+  return {
+    theme: 'light',
+    defaultView: 'grid',
+    pageSize: 24,
+    thumbnailQuality: 80,
+    lazyLoad: true,
+    showFileSize: true,
+    showUploadDate: true
+  }
+}
+
 export const useImageStore = defineStore('image', () => {
+  const displaySettings = loadDisplaySettings()
+
   const albums = ref<Album[]>([])
   const currentAlbum = ref<Album | null>(null)
   const images = ref<Image[]>([])
   const loading = ref<boolean>(false)
   const page = ref<number>(1)
-  const pageSize = ref<number>(24)
+  const pageSize = ref<number>(displaySettings.pageSize) // 使用用户设置的每页数量
   const total = ref<number>(0)
   const sortBy = ref<string>('time')
   const order = ref<'asc' | 'desc'>('desc')

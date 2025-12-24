@@ -256,6 +256,29 @@ import FormatConverter from '@/components/FormatConverter.vue'
 const store = useImageStore()
 const { copyImageLink, downloadImage, formatFileSize } = useImageOperations()
 
+// 从 LocalStorage 加载显示设置
+const loadDisplaySettings = () => {
+  const saved = localStorage.getItem('display-settings')
+  if (saved) {
+    try {
+      return JSON.parse(saved)
+    } catch (e) {
+      console.error('Failed to parse display settings:', e)
+    }
+  }
+  return {
+    theme: 'light',
+    defaultView: 'grid',
+    pageSize: 24,
+    thumbnailQuality: 80,
+    lazyLoad: true,
+    showFileSize: true,
+    showUploadDate: true
+  }
+}
+
+const displaySettings = loadDisplaySettings()
+
 // Computed properties
 const albums = computed(() => store.albums)
 const currentAlbum = computed(() => store.currentAlbum)
@@ -268,8 +291,8 @@ const totalSize = computed(() => {
   return formatFileSize(total)
 })
 
-// State
-const viewMode = ref('grid')
+// State - 使用显示设置中的默认值
+const viewMode = ref(displaySettings.defaultView)
 const searchKeyword = ref('')
 const selectedTag = ref('')
 const sortByValue = ref('time-desc')
@@ -587,7 +610,7 @@ const handleDeleteImage = async (id) => {
 const copyShortLink = async (image) => {
   console.log('🔍 复制短链 - 图片对象:', image)
   console.log('🔍 短链URL:', image.shortLinkUrl)
-  
+
   if (!image.shortLinkUrl) {
     ElMessage.warning('该图片暂无短链')
     return

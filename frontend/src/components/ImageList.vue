@@ -19,7 +19,7 @@
         {{ row.width }} × {{ row.height }}
       </template>
     </el-table-column>
-    <el-table-column label="大小" width="100">
+    <el-table-column v-if="displaySettings.showFileSize" label="大小" width="100">
       <template #default="{ row }">
         {{ formatFileSize(row.fileSize) }}
       </template>
@@ -47,7 +47,7 @@
         </el-tag>
       </template>
     </el-table-column>
-    <el-table-column label="上传时间" width="180">
+    <el-table-column v-if="displaySettings.showUploadDate" label="上传时间" width="180">
       <template #default="{ row }">
         {{ formatDate(row.createdAt) }}
       </template>
@@ -122,7 +122,8 @@
 </template>
 
 <script setup>
-import { View, Link, Download, Delete, ArrowDown, PriceTag, Edit, RefreshRight } from '@element-plus/icons-vue'
+import { Link, View, Download, Delete, Edit, Refresh, MagicStick } from '@element-plus/icons-vue'
+import { computed } from 'vue'
 
 defineProps({
   images: {
@@ -133,9 +134,29 @@ defineProps({
 
 defineEmits(['preview', 'copyLink', 'download', 'delete', 'editTags', 'edit', 'convert', 'copyShortLink'])
 
+// 加载显示设置
+const loadDisplaySettings = () => {
+  const settings = localStorage.getItem('display-settings')
+  return settings ? JSON.parse(settings) : {
+    showFileSize: true,
+    showUploadDate: true,
+    thumbnailQuality: 80
+  }
+}
+
+const displaySettings = computed(() => loadDisplaySettings())
+
 // 添加时间戳参数以避免缓存
 const getImageUrl = (image) => {
   const timestamp = new Date(image.updatedAt).getTime()
+  const quality = displaySettings.value.thumbnailQuality || 80
+
+  // 如果图片有缩略图，使用缩略图API，并添加质量参数
+  if (image.thumbnail) {
+    return `/api/images/${image.id}/thumbnail?quality=${quality}&t=${timestamp}`
+  }
+
+  // 没有缩略图则使用原图
   return `${image.url}?t=${timestamp}`
 }
 
@@ -150,7 +171,24 @@ const formatFileSize = (bytes) => {
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN')
+  const now = new Date()
+  const diff = now - date
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (days === 0) {
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    if (hours === 0) {
+      const minutes = Math.floor(diff / (1000 * 60))
+      return minutes === 0 ? '刚刚' : `${minutes}分钟前`
+    }
+    return `${hours}小时前`
+  } else if (days === 1) {
+    return '昨天'
+  } else if (days < 7) {
+    return `${days}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN')
+  }
 }
 </script>
 

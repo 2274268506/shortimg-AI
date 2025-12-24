@@ -141,7 +141,10 @@
           </el-tag>
         </div>
         <div class="image-meta">
-          <span class="image-size">{{ formatFileSize(image.fileSize) }}</span>
+          <span class="image-size" v-if="displaySettings.showFileSize">{{ formatFileSize(image.fileSize) }}</span>
+          <span class="image-date" v-if="displaySettings.showUploadDate && image.createdAt">
+            {{ formatDate(image.createdAt) }}
+          </span>
           <span class="image-views" v-if="image.viewCount">
             <el-icon><View /></el-icon>
             {{ image.viewCount }}
@@ -153,6 +156,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { View, Link, Download, Delete, PriceTag, Edit, RefreshRight, CirclePlus, Switch, Close } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { generateShortLink, unbindShortLink, transferShortLink } from '@/api'
@@ -165,6 +169,29 @@ defineProps({
 })
 
 const emit = defineEmits(['preview', 'copyLink', 'download', 'delete', 'editTags', 'edit', 'convert', 'copyShortLink', 'refresh'])
+
+// 从 LocalStorage 加载显示设置
+const loadDisplaySettings = () => {
+  const saved = localStorage.getItem('display-settings')
+  if (saved) {
+    try {
+      return JSON.parse(saved)
+    } catch (e) {
+      console.error('Failed to parse display settings:', e)
+    }
+  }
+  return {
+    theme: 'light',
+    defaultView: 'grid',
+    pageSize: 24,
+    thumbnailQuality: 80,
+    lazyLoad: true,
+    showFileSize: true,
+    showUploadDate: true
+  }
+}
+
+const displaySettings = computed(() => loadDisplaySettings())
 
 // 生成短链
 const handleGenerateShortLink = async (image) => {
@@ -279,6 +306,14 @@ const handleDeleteShortLink = async (image) => {
 // 添加时间戳参数以避免缓存
 const getImageUrl = (image) => {
   const timestamp = new Date(image.updatedAt).getTime()
+  const quality = displaySettings.value.thumbnailQuality || 80
+
+  // 如果图片有缩略图，使用缩略图API，并添加质量参数
+  if (image.thumbnail) {
+    return `/api/images/${image.id}/thumbnail?quality=${quality}&t=${timestamp}`
+  }
+
+  // 没有缩略图则使用原图
   return `${image.url}?t=${timestamp}`
 }
 
@@ -288,6 +323,29 @@ const formatFileSize = (bytes) => {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diff = now - date
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (days === 0) {
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    if (hours === 0) {
+      const minutes = Math.floor(diff / (1000 * 60))
+      return minutes === 0 ? '刚刚' : `${minutes}分钟前`
+    }
+    return `${hours}小时前`
+  } else if (days === 1) {
+    return '昨天'
+  } else if (days < 7) {
+    return `${days}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN')
+  }
 }
 
 const parseTags = (tagsStr) => {

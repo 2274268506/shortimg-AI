@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"imagebed/logger"
 	"time"
 
@@ -57,15 +58,40 @@ func LoggerMiddleware() gin.HandlerFunc {
 		}
 
 		// 如果有错误，记录错误
+		var errorMsg string
 		if len(c.Errors) > 0 {
-			fields = append(fields, zap.String("errors", c.Errors.String()))
+			errorMsg = c.Errors.String()
+			fields = append(fields, zap.String("errors", errorMsg))
 		}
 
-		// 根据状态码选择日志级别
+		// 根据状态码选择日志级别并记录到数据库
 		if status >= 500 {
 			logger.Error("Server error", fields...)
+			// 记录到数据库
+			logger.SaveSystemLog(logger.LevelError, "http",
+				fmt.Sprintf("Server error: %s %s", c.Request.Method, path),
+				errorMsg,
+				map[string]interface{}{
+					"status":     status,
+					"method":     c.Request.Method,
+					"path":       path,
+					"ip":         clientIP,
+					"latency_ms": latency.Milliseconds(),
+				})
 		} else if status >= 400 {
 			logger.Warn("Client error", fields...)
+			// 4xx错误也记录到数据库（仅记录重要的错误）
+			if status == 401 || status == 403 || status == 404 {
+				logger.SaveSystemLog(logger.LevelWarn, "http",
+					fmt.Sprintf("Client error: %s %s", c.Request.Method, path),
+					errorMsg,
+					map[string]interface{}{
+						"status": status,
+						"method": c.Request.Method,
+						"path":   path,
+						"ip":     clientIP,
+					})
+			}
 		} else {
 			logger.Info("Request", fields...)
 		}
@@ -77,12 +103,24 @@ func RecoveryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
+				errorMsg := fmt.Sprintf("%v", err)
 				logger.Error("Panic recovered",
 					zap.Any("error", err),
 					zap.String("path", c.Request.URL.Path),
 					zap.String("method", c.Request.Method),
 					zap.String("ip", c.ClientIP()),
 				)
+
+				// 记录panic到数据库
+				logger.SaveSystemLog(logger.LevelError, "panic",
+					fmt.Sprintf("Panic: %s %s", c.Request.Method, c.Request.URL.Path),
+					errorMsg,
+					map[string]interface{}{
+						"method": c.Request.Method,
+						"path":   c.Request.URL.Path,
+						"ip":     c.ClientIP(),
+					})
+
 				c.AbortWithStatus(500)
 			}
 		}()
