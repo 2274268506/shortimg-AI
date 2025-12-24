@@ -42,7 +42,18 @@ func GetUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": result})
+	// 重新构造返回数据，将 data 改为 users
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"users":       result.Data,
+			"total":       result.Total,
+			"page":        result.Page,
+			"pageSize":    result.PageSize,
+			"totalPages":  result.TotalPages,
+			"hasPrevious": result.HasPrevious,
+			"hasNext":     result.HasNext,
+		},
+	})
 }
 
 // GetUser 获取单个用户详情（管理员）
@@ -92,10 +103,41 @@ func GetUserStats(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": stats})
 }
 
+// GetUserRecentImages 获取用户最近上传的图片（管理员）
+func GetUserRecentImages(c *gin.Context) {
+	id := c.Param("id")
+	userID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	// 获取数量限制，默认6张
+	limit := 6
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	db := database.GetDB()
+	var images []models.Image
+
+	if err := db.Where("owner_id = ?", userID).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&images).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取图片列表失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": images})
+}
+
 // DeleteUser 删除用户（管理员）
 func DeleteUser(c *gin.Context) {
 	idStr := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID, _ := c.Get("userID") // 修改为 userID（驼峰命名）
 
 	// 将字符串ID转换为uint
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -111,12 +153,117 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	db := database.GetDB()
-	if err := db.Delete(&models.User{}, id).Error; err != nil {
+	// 使用 Unscoped() 进行硬删除，真正从数据库中删除记录
+	if err := db.Unscoped().Delete(&models.User{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除用户失败"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
+}
+
+// CreateUserRequest 创建用户请求
+type CreateUserRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=50"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
+	Role     string `json:"role" binding:"required,oneof=user admin"`
+}
+
+// CreateUser 创建用户（管理员）
+func CreateUser(c *gin.Context) {
+	var req CreateUserRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		return
+	}
+
+	db := database.GetDB()
+
+	// 检查用户名是否已存在
+	var existingUser models.User
+	if err := db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名已存在"})
+		return
+	}
+
+	// 检查邮箱是否已存在
+	if err := db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱已被使用"})
+		return
+	}
+
+	// 创建新用户
+	user := models.User{
+		Username: req.Username,
+		Email:    req.Email,
+		Role:     req.Role,
+		Status:   "active",
+	}
+
+	// 加密密码
+	if err := user.HashPassword(req.Password); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "密码加密失败"})
+		return
+	}
+
+	if err := db.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建用户失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": user})
+}
+
+// UpdateUserRequest 更新用户信息请求
+type UpdateUserRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=50"`
+	Email    string `json:"email" binding:"required,email"`
+	Bio      string `json:"bio"`
+}
+
+// UpdateUser 更新用户信息（管理员）
+func UpdateUser(c *gin.Context) {
+	id := c.Param("id")
+	var req UpdateUserRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		return
+	}
+
+	db := database.GetDB()
+	var user models.User
+
+	if err := db.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+		return
+	}
+
+	// 检查用户名是否被其他用户使用
+	var existingUser models.User
+	if err := db.Where("username = ? AND id != ?", req.Username, id).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名已被使用"})
+		return
+	}
+
+	// 检查邮箱是否被其他用户使用
+	if err := db.Where("email = ? AND id != ?", req.Email, id).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱已被使用"})
+		return
+	}
+
+	user.Username = req.Username
+	user.Email = req.Email
+	user.Bio = req.Bio
+
+	if err := db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新用户信息失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": user})
 }
 
 // UpdateUserRoleRequest 更新用户角色请求

@@ -60,6 +60,7 @@ func SetupRoutes() *gin.Engine {
 	// 保持向后兼容的旧版API路由（无版本前缀）
 	// 逐步迁移到 /api/v1，这里保留以避免破坏现有客户端
 	api := r.Group("/api")
+	api.Use(middleware.OperationLogMiddleware()) // 添加操作日志记录中间件
 	{
 		// 认证相关路由（无需token）
 		auth := api.Group("/auth")
@@ -75,8 +76,11 @@ func SetupRoutes() *gin.Engine {
 		users.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 		{
 			users.GET("", controllers.GetUsers)                              // 获取用户列表（支持分页、搜索）
+			users.POST("", controllers.CreateUser)                           // 创建用户
 			users.GET("/:id", controllers.GetUser)                           // 获取用户详情
+			users.PUT("/:id", controllers.UpdateUser)                        // 更新用户信息
 			users.GET("/:id/stats", controllers.GetUserStats)                // 获取用户统计
+			users.GET("/:id/images", controllers.GetUserRecentImages)        // 获取用户最近图片
 			users.DELETE("/:id", controllers.DeleteUser)                     // 删除用户
 			users.PUT("/:id/role", controllers.UpdateUserRole)               // 更新用户角色
 			users.PUT("/:id/status", controllers.UpdateUserStatus)           // 更新用户状态

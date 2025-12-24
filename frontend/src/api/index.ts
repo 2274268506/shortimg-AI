@@ -230,6 +230,13 @@ export const getUserStats = (id: number) => {
   return request.get<ApiResponse<UserStats>>(`/users/${id}/stats`)
 }
 
+// 获取用户最近上传的图片（管理员）
+export const getUserRecentImages = (id: number, limit: number = 6) => {
+  return request.get<ApiResponse<Image[]>>(`/users/${id}/images`, {
+    params: { limit }
+  })
+}
+
 // 更新用户状态（管理员）
 export const updateUserStatus = (id: number, status: string) => {
   return request.put<ApiResponse<User>>(`/users/${id}/status`, { status })
@@ -248,6 +255,25 @@ export const deleteUser = (id: number) => {
 // 更新用户角色（管理员）
 export const updateUserRole = (id: number, role: string) => {
   return request.put<ApiResponse<User>>(`/users/${id}/role`, { role })
+}
+
+// 创建用户（管理员）
+export const createUser = (data: {
+  username: string
+  email: string
+  password: string
+  role: string
+}) => {
+  return request.post<ApiResponse<User>>('/users', data)
+}
+
+// 更新用户信息（管理员）
+export const updateUser = (id: number, data: {
+  username: string
+  email: string
+  bio?: string
+}) => {
+  return request.put<ApiResponse<User>>(`/users/${id}`, data)
 }
 
 // ========== 个人资料相关 API ==========
@@ -282,10 +308,10 @@ export const unbindShortLink = (imageId: number, permanent: boolean = false) => 
 
 // 转移短链到另一张图片
 export const transferShortLink = (oldImageId: number, newImageIdOrUuid: number | string) => {
-  const body = typeof newImageIdOrUuid === 'string' 
+  const body = typeof newImageIdOrUuid === 'string'
     ? { target_uuid: newImageIdOrUuid }
     : { new_image_id: newImageIdOrUuid }
-  
+
   return request.put<ApiResponse<{
     message: string
     short_link_code: string
