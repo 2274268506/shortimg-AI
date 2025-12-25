@@ -3,11 +3,15 @@
 
 -- 使用简化配置避免lyaml依赖问题
 local simple_config = require "routing_config_simple"
+local geoip_manager = require "geoip_manager"
+local geoip_query = require "geoip_query"
+
 local _M = {}
 
 -- 全局缓存
 local routing_config = nil
 local cdn_nodes_map = {}
+local selected_geoip_databases = nil
 local last_load_time = 0
 
 -- 日志函数
@@ -34,14 +38,22 @@ end
 
 -- 获取配置（使用简化配置）
 function _M.get_config(force_reload)
-    if not routing_config then
+    if not routing_config or force_reload then
         routing_config = {
             cdn_nodes = simple_config.cdn_nodes,
             routing_rules = simple_config.routing_rules,
             default_routing = simple_config.default_routing
         }
         init_cdn_nodes(routing_config.cdn_nodes)
+
+        -- 根据路由规则自动选择合适的 GeoIP 数据库
+        selected_geoip_databases = geoip_manager.select_databases(routing_config.routing_rules)
+
         log(ngx.INFO, "配置已加载")
+        log(ngx.INFO, string.format("已选择 %d 个 GeoIP 数据库", #selected_geoip_databases))
+        for _, db in ipairs(selected_geoip_databases) do
+            log(ngx.INFO, string.format("  - %s (得分: %d)", db.name, db.score))
+        end
     end
 
     return routing_config
@@ -263,9 +275,47 @@ function _M.get_fallback_chain()
     return {"public", "private", "fallback"}
 end
 
+-- 获取选中的 GeoIP 数据库
+function _M.get_selected_geoip_databases()
+    if not selected_geoip_databases then
+        _M.get_config()  -- 触发配置加载
+    end
+    return selected_geoip_databases
+end
+
+-- 查询 IP 地理位置信息
+function _M.query_geoip(ip)
+    local databases = _M.get_selected_geoip_databases()
+    if not databases or #databases == 0 then
+        log(ngx.WARN, "没有可用的 GeoIP 数据库")
+        return nil
+    end
+
+    local result, all_results = geoip_query.query(ip, databases)
+    return result
+end
+
+-- 获取 GeoIP 数据库推荐
+function _M.get_geoip_recommendations()
+    local config = _M.get_config()
+    return geoip_manager.generate_recommendations(config.routing_rules)
+end
+
+-- 获取所有可用的 GeoIP 数据库
+function _M.get_available_geoip_databases()
+    return geoip_manager.get_available_databases()
+end
+
+-- 验证 GeoIP 数据库
+function _M.validate_geoip_databases()
+    return geoip_manager.validate_databases()
+end
+
 -- 重载配置（用于热更新）
 function _M.reload()
     log(ngx.INFO, "手动重载配置")
+    routing_config = nil
+    selected_geoip_databases = nil
     return _M.get_config(true)
 end
 
