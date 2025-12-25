@@ -5,8 +5,10 @@ const TOKEN_KEY = 'imagebed_token'
 const USER_KEY = 'imagebed_user'
 
 // 默认配置
+// 在生产环境中使用空字符串，这样会使用相对路径 /api
+// 在开发环境中使用 localhost
 const DEFAULT_CONFIG: SystemConfig = {
-  backendUrl: 'http://localhost:8080'
+  backendUrl: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080'
 }
 
 // 获取配置

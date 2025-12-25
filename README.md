@@ -1,222 +1,441 @@
-# 🖼️ ShortImg-AI - 智能图床与短链系统
+# ShortImg-AI 图床系统# 🖼️ ShortImg-AI - 智能图床与短链系统
 
-<div align="center">
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
+一个功能完整的现代化图床系统，支持图片上传、管理、短链生成和CDN分流。<div align="center">
+
+
+
+## ✨ 特性![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
 ![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)
-![Vue](https://img.shields.io/badge/Vue-3.3+-4FC08D?logo=vue.js)
-![OpenResty](https://img.shields.io/badge/OpenResty-1.21+-00ADD8?logo=nginx)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 
-一个功能强大的图床管理与智能短链系统，支持多CDN分流、地理位置路由、图片格式转换、权限管理等功能。
+- 🖼️ **图片管理**: 支持多格式图片上传、相册管理、缩略图生成![Vue](https://img.shields.io/badge/Vue-3.3+-4FC08D?logo=vue.js)
 
-[功能特性](#-功能特性) • [快速开始](#-快速开始) • [架构设计](#-架构设计) • [文档](#-文档) • [演示](#-演示)
+- 🔗 **短链服务**: 自动生成短链接，支持地域路由和CDN分流![OpenResty](https://img.shields.io/badge/OpenResty-1.21+-00ADD8?logo=nginx)
 
-</div>
+- 👥 **用户系统**: 多用户支持、权限管理、JWT认证![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 
----
+- 📊 **统计功能**: 访问统计、存储统计、实时监控
 
-## 📸 项目简介
+- 🎨 **标签系统**: 图片标签分类、批量管理一个功能强大的图床管理与智能短链系统，支持多CDN分流、地理位置路由、图片格式转换、权限管理等功能。
+
+- 🚀 **高性能**: Redis缓存、数据库优化、静态资源CDN
+
+- 🔐 **安全可靠**: API密钥认证、HTTPS加密、数据备份[功能特性](#-功能特性) • [快速开始](#-快速开始) • [架构设计](#-架构设计) • [文档](#-文档) • [演示](#-演示)
+
+
+
+## 🏗️ 技术栈</div>
+
+
+
+### 图床服务---
+
+- **前端**: Vue 3 + TypeScript + Vite + Element Plus
+
+- **后端**: Go + Gin + GORM + MySQL + Redis## 📸 项目简介
+
+- **部署**: Docker + Docker Compose + Nginx
 
 **ShortImg-AI** 是一个企业级的图床管理与智能短链系统，整合了三大核心服务：
 
-- 🖼️ **图床服务** (Backend) - Go + Gin 构建的高性能图片存储与管理系统
-- 🔗 **短链服务** (Redirect Service) - OpenResty + Lua 实现的智能 CDN 分流引擎
+### 短链服务
+
+- **前端/后端**: OpenResty + Lua + Redis + MySQL- 🖼️ **图床服务** (Backend) - Go + Gin 构建的高性能图片存储与管理系统
+
+- **功能**: 短链生成、地理路由、CDN分流、访问统计- 🔗 **短链服务** (Redirect Service) - OpenResty + Lua 实现的智能 CDN 分流引擎
+
 - 🎨 **管理界面** (Frontend) - Vue 3 + Element Plus 现代化管理控制台
+
+## 📁 项目结构
 
 ### 🌟 核心亮点
 
-- ✨ **智能路由** - 基于地理位置、运营商、IP段的多维度 CDN 分流
-- 🚀 **高性能** - OpenResty + Redis 缓存，支持百万级短链访问
-- 🎯 **灵活配置** - 声明式 YAML 配置，支持热更新，无需重启
-- 🔐 **安全可靠** - JWT 认证、权限管理、访问统计、审计日志
-- 📊 **可观测性** - Prometheus 监控、AlertManager 告警、实时日志
-- 🐳 **容器化** - Docker Compose 一键部署，生产环境就绪
+```
 
----
+shortimg-AI/- ✨ **智能路由** - 基于地理位置、运营商、IP段的多维度 CDN 分流
 
-## 🎯 功能特性
+├── backend/              # 后端服务- 🚀 **高性能** - OpenResty + Redis 缓存，支持百万级短链访问
 
-### 📷 图床服务 (Backend)
+│   ├── controllers/      # 控制器- 🎯 **灵活配置** - 声明式 YAML 配置，支持热更新，无需重启
 
-<details>
-<summary><b>核心功能</b></summary>
+│   ├── models/          # 数据模型- 🔐 **安全可靠** - JWT 认证、权限管理、访问统计、审计日志
 
-- ✅ **图片上传与管理**
-  - 支持拖拽上传、批量上传、粘贴上传
-  - 实时上传进度、断点续传
-  - 图片裁剪、缩放、旋转
+│   ├── routes/          # 路由- 📊 **可观测性** - Prometheus 监控、AlertManager 告警、实时日志
 
-- ✅ **格式转换**
-  - 支持 JPG、PNG、WebP、AVIF 互转
-  - 智能压缩优化
-  - 自定义质量参数
+│   ├── middleware/      # 中间件- 🐳 **容器化** - Docker Compose 一键部署，生产环境就绪
 
-- ✅ **存储后端**
-  - 本地文件系统
-  - 腾讯云 COS
-  - 阿里云 OSS（规划中）
-  - AWS S3（规划中）
+│   ├── storage/         # 存储层
+
+│   ├── docker-compose.prod.yml  # 生产环境配置---
+
+│   └── .env.production  # 环境变量模板
+
+├── frontend/            # 前端服务## 🎯 功能特性
+
+│   ├── src/
+
+│   │   ├── views/       # 页面组件### 📷 图床服务 (Backend)
+
+│   │   ├── components/  # 通用组件
+
+│   │   ├── utils/       # 工具函数<details>
+
+│   │   └── router/      # 路由配置<summary><b>核心功能</b></summary>
+
+│   └── vite.config.ts   # Vite 配置
+
+├── redirect-service/    # 短链服务- ✅ **图片上传与管理**
+
+│   ├── lua/             # Lua 脚本  - 支持拖拽上传、批量上传、粘贴上传
+
+│   ├── conf/            # OpenResty 配置  - 实时上传进度、断点续传
+
+│   ├── sql/             # 数据库脚本  - 图片裁剪、缩放、旋转
+
+│   └── docker-compose.prod.yml
+
+├── docs/                # 文档- ✅ **格式转换**
+
+│   ├── IMAGE_PROCESSING.md     # 图片处理说明  - 支持 JPG、PNG、WebP、AVIF 互转
+
+│   ├── USER_MANAGEMENT.md      # 用户管理说明  - 智能压缩优化
+
+│   ├── 统计功能说明.md         # 统计功能文档  - 自定义质量参数
+
+│   ├── 标签功能实现.md         # 标签功能文档
+
+│   ├── 图片格式转换功能说明.md # 格式转换文档- ✅ **存储后端**
+
+│   ├── 性能优化与监控.md       # 性能优化指南  - 本地文件系统
+
+│   └── 系统日志功能说明.md     # 日志功能说明  - 腾讯云 COS
+
+├── DEPLOYMENT_GUIDE.md  # 部署指南  - 阿里云 OSS（规划中）
+
+└── README.md           # 本文件  - AWS S3（规划中）
+
+```
 
 - ✅ **相册管理**
-  - 创建相册分组
+
+## 🚀 快速开始  - 创建相册分组
+
   - 图片分类标签
-  - 批量操作
 
-- ✅ **权限控制**
-  - 用户认证（JWT）
-  - 角色权限管理
-  - 图片访问控制（公开/私有/密码）
+### 开发环境  - 批量操作
 
-- ✅ **统计分析**
+
+
+#### 前置要求- ✅ **权限控制**
+
+- Go 1.21+  - 用户认证（JWT）
+
+- Node.js 18+  - 角色权限管理
+
+- MySQL 8.0+  - 图片访问控制（公开/私有/密码）
+
+- Redis 7+
+
+- Docker & Docker Compose- ✅ **统计分析**
+
   - 访问量统计
-  - 存储空间分析
+
+#### 后端启动  - 存储空间分析
+
   - 热门图片排行
 
-</details>
+```bash
 
-### 🔗 短链服务 (Redirect Service)
+cd backend</details>
 
-<details>
+cp .env.example .env  # 配置环境变量
+
+go mod download### 🔗 短链服务 (Redirect Service)
+
+go run main.go
+
+```<details>
+
 <summary><b>核心功能</b></summary>
 
+#### 前端启动
+
 - ✅ **智能路由引擎**
-  - 🌍 **地理位置路由** - 根据省份、城市选择最近 CDN
-  - 📡 **运营商路由** - 电信/联通/移动智能分流
-  - 🔢 **IP 段路由** - 企业内网/公网自动识别
-  - 🎲 **权重路由** - 灰度发布、A/B 测试
-  - 🔄 **一致性哈希** - 会话保持、缓存优化
+
+```bash  - 🌍 **地理位置路由** - 根据省份、城市选择最近 CDN
+
+cd frontend  - 📡 **运营商路由** - 电信/联通/移动智能分流
+
+npm install  - 🔢 **IP 段路由** - 企业内网/公网自动识别
+
+npm run dev  - 🎲 **权重路由** - 灰度发布、A/B 测试
+
+```  - 🔄 **一致性哈希** - 会话保持、缓存优化
+
   - 🧩 **组合策略** - 多种策略组合使用
 
+### 生产部署
+
 - ✅ **高级特性**
-  - ⚡ **热更新配置** - 修改规则自动生效，无需重启
+
+详细部署文档请参考：[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)  - ⚡ **热更新配置** - 修改规则自动生效，无需重启
+
   - 🚀 **高性能缓存** - Redis + 本地缓存双层架构
-  - 📊 **实时监控** - Prometheus 指标采集
+
+#### 快速部署（图床服务）  - 📊 **实时监控** - Prometheus 指标采集
+
   - 🔍 **访问日志** - 完整的请求追踪
-  - 🛡️ **安全防护** - 频率限制、黑白名单
 
-- ✅ **API 支持**
-  - 创建图床短链（单个/批量）
+```bash  - 🛡️ **安全防护** - 频率限制、黑白名单
+
+# 1. 克隆项目
+
+git clone <repository-url>- ✅ **API 支持**
+
+cd shortimg-AI/backend  - 创建图床短链（单个/批量）
+
   - 创建通用短链
-  - 自定义短链代码
-  - 过期时间设置
-  - 统计信息查询
 
-</details>
+# 2. 配置环境变量  - 自定义短链代码
+
+cp .env.production .env  - 过期时间设置
+
+nano .env  # 编辑配置  - 统计信息查询
+
+
+
+# 3. 启动服务</details>
+
+docker-compose -f docker-compose.prod.yml up -d
 
 ### 🎨 管理界面 (Frontend)
 
-<details>
-<summary><b>核心功能</b></summary>
+# 4. 检查状态
+
+docker-compose -f docker-compose.prod.yml ps<details>
+
+docker-compose -f docker-compose.prod.yml logs -f backend<summary><b>核心功能</b></summary>
+
+```
 
 - ✅ **图片管理**
-  - 网格/列表视图切换
-  - 图片预览与编辑
-  - 批量下载/删除
-  - 快速搜索过滤
 
-- ✅ **相册管理**
-  - 相册创建与编辑
+#### 快速部署（短链服务）  - 网格/列表视图切换
+
+  - 图片预览与编辑
+
+```bash  - 批量下载/删除
+
+cd redirect-service  - 快速搜索过滤
+
+
+
+# 1. 配置环境变量- ✅ **相册管理**
+
+nano .env  # 配置 API Key、域名等  - 相册创建与编辑
+
   - 图片拖拽分组
-  - 权限设置
+
+# 2. 启动服务  - 权限设置
+
+docker-compose -f docker-compose.prod.yml up -d
 
 - ✅ **短链管理**
-  - 短链创建与查看
-  - 访问统计图表
-  - 批量导入/导出
 
-- ✅ **数据统计**
+# 3. 验证  - 短链创建与查看
+
+curl https://short.yourdomain.com/health  - 访问统计图表
+
+```  - 批量导入/导出
+
+
+
+## 📖 文档- ✅ **数据统计**
+
   - 实时数据看板
-  - 图表可视化（ECharts）
-  - 存储空间分析
-  - 流量统计
 
-- ✅ **用户管理**
-  - 用户注册/登录
-  - 个人资料编辑
-  - 密码修改
+- [部署指南](./DEPLOYMENT_GUIDE.md) - 生产环境部署完整指南  - 图表可视化（ECharts）
+
+- [图片处理](./docs/IMAGE_PROCESSING.md) - 图片上传、压缩、格式转换  - 存储空间分析
+
+- [用户管理](./docs/USER_MANAGEMENT.md) - 用户系统和权限管理  - 流量统计
+
+- [统计功能](./docs/统计功能说明.md) - 访问统计和数据分析
+
+- [标签系统](./docs/标签功能实现.md) - 图片标签分类管理- ✅ **用户管理**
+
+- [性能优化](./docs/性能优化与监控.md) - 系统性能优化指南  - 用户注册/登录
+
+- [格式转换](./docs/图片格式转换功能说明.md) - 图片格式转换功能  - 个人资料编辑
+
+- [系统日志](./docs/系统日志功能说明.md) - 日志查看和管理  - 密码修改
+
   - API 密钥管理
+
+## 🔧 配置说明
 
 </details>
 
+### 关键配置项
+
 ---
+
+#### 图床服务 (backend/.env)
 
 ## 🏗️ 架构设计
 
-### 系统架构图
+```bash
 
-```
+# 数据库### 系统架构图
+
+MYSQL_PASSWORD=your_secure_password
+
+MYSQL_DATABASE=imagebed```
+
 ┌─────────────────────────────────────────────────────────────┐
-│                         用户访问                             │
-└─────────────────────┬───────────────────────────────────────┘
+
+# JWT 密钥│                         用户访问                             │
+
+JWT_SECRET=your_jwt_secret_minimum_32_characters└─────────────────────┬───────────────────────────────────────┘
+
                       │
-         ┌────────────┴────────────┐
-         │                         │
-    图片上传/管理              短链访问
-         │                         │
+
+# 短链服务         ┌────────────┴────────────┐
+
+SHORT_LINK_API_KEY=your_api_key_minimum_60_characters         │                         │
+
+SHORT_LINK_BASE_URL=https://short.yourdomain.com    图片上传/管理              短链访问
+
+SHORT_LINK_PUBLIC_URL=https://short.yourdomain.com         │                         │
+
          ▼                         ▼
-┌─────────────────┐      ┌──────────────────┐
-│  Nginx (HTTPS)  │      │  Nginx (HTTPS)   │
-│   Port 443      │      │    Port 443      │
+
+# 后端公开地址┌─────────────────┐      ┌──────────────────┐
+
+BACKEND_PUBLIC_URL=https://img.yourdomain.com│  Nginx (HTTPS)  │      │  Nginx (HTTPS)   │
+
+```│   Port 443      │      │    Port 443      │
+
 └────────┬────────┘      └────────┬─────────┘
-         │                        │
+
+#### 短链服务 (redirect-service/.env)         │                        │
+
          ▼                        ▼
-┌─────────────────┐      ┌──────────────────┐
-│   Frontend      │      │  OpenResty       │
-│   Vue 3 SPA     │      │  (Lua Engine)    │
-└────────┬────────┘      └────────┬─────────┘
+
+```bash┌─────────────────┐      ┌──────────────────┐
+
+# Redis 配置│   Frontend      │      │  OpenResty       │
+
+REDIS_PASSWORD=your_redis_password│   Vue 3 SPA     │      │  (Lua Engine)    │
+
+REDIS_DB=1└────────┬────────┘      └────────┬─────────┘
+
          │                        │
-         ▼                        │
-┌─────────────────┐               │
-│   Backend       │◄──────────────┘
+
+# API 密钥（必须与图床服务一致）         ▼                        │
+
+DASHBOARD_API_KEY=your_api_key_minimum_60_characters┌─────────────────┐               │
+
+API_KEY=your_api_key_minimum_60_characters│   Backend       │◄──────────────┘
+
 │   Go + Gin      │    短链创建 API
-└────────┬────────┘
-         │
-    ┌────┴────┬─────────┬──────────┐
-    │         │         │          │
+
+# 域名配置└────────┬────────┘
+
+REDIRECT_DOMAIN=short.yourdomain.com         │
+
+TC_GO_PRIMARY_DOMAIN=img.yourdomain.com    ┌────┴────┬─────────┬──────────┐
+
+```    │         │         │          │
+
     ▼         ▼         ▼          ▼
-┌────────┐┌────────┐┌────────┐┌────────┐
+
+## 🔒 安全┌────────┐┌────────┐┌────────┐┌────────┐
+
 │ MySQL  ││ Redis  ││ 腾讯云 ││ 本地   │
-│ 8.0    ││ 7.0    ││  COS   ││ 存储   │
-└────────┘└────────┘└────────┘└────────┘
-```
 
-### 技术栈
+- ✅ JWT Token 认证│ 8.0    ││ 7.0    ││  COS   ││ 存储   │
 
-#### 后端 (Backend)
+- ✅ API Key 验证└────────┘└────────┘└────────┘└────────┘
+
+- ✅ HTTPS 加密传输```
+
+- ✅ SQL 注入防护
+
+- ✅ XSS 防护### 技术栈
+
+- ✅ CORS 跨域控制
+
+- ✅ 文件类型验证#### 后端 (Backend)
+
+- ✅ 文件大小限制
 
 - **语言**: Go 1.21+
-- **框架**: Gin Web Framework
+
+## 📊 系统要求- **框架**: Gin Web Framework
+
 - **数据库**: MySQL 8.0
-- **缓存**: Redis 7.0
-- **存储**: 本地文件系统 / 腾讯云 COS
-- **文档**: Swagger/OpenAPI
-- **监控**: Prometheus + Grafana
+
+### 最低配置- **缓存**: Redis 7.0
+
+- CPU: 2核- **存储**: 本地文件系统 / 腾讯云 COS
+
+- 内存: 4GB- **文档**: Swagger/OpenAPI
+
+- 磁盘: 50GB- **监控**: Prometheus + Grafana
+
+- 带宽: 10Mbps
 
 #### 短链服务 (Redirect Service)
 
-- **引擎**: OpenResty (Nginx + LuaJIT)
-- **语言**: Lua
-- **GeoIP**: MaxMind GeoLite2
-- **配置**: YAML (声明式)
+### 推荐配置
+
+- CPU: 4核+- **引擎**: OpenResty (Nginx + LuaJIT)
+
+- 内存: 8GB+- **语言**: Lua
+
+- 磁盘: 100GB+ (SSD)- **GeoIP**: MaxMind GeoLite2
+
+- 带宽: 100Mbps+- **配置**: YAML (声明式)
+
 - **缓存**: Redis + ngx.shared.DICT
+
+## 🤝 贡献
 
 #### 前端 (Frontend)
 
+欢迎提交 Issue 和 Pull Request！
+
 - **框架**: Vue 3 (Composition API)
-- **UI**: Element Plus
+
+## 📄 许可证- **UI**: Element Plus
+
 - **状态**: Pinia
-- **路由**: Vue Router
+
+[MIT License](LICENSE)- **路由**: Vue Router
+
 - **构建**: Vite
-- **图表**: ECharts
+
+## 🙏 致谢- **图表**: ECharts
+
 - **HTTP**: Axios
+
+感谢所有开源项目的贡献者！
 
 #### 基础设施
 
+---
+
 - **容器化**: Docker + Docker Compose
-- **监控**: Prometheus + AlertManager
-- **日志**: Zap (Go) + Nginx Access Log
-- **反向代理**: Nginx
+
+**部署成功案例：**- **监控**: Prometheus + AlertManager
+
+- 图床服务: https://img.oxvxo.link- **日志**: Zap (Go) + Nginx Access Log
+
+- 短链服务: https://short.oxvxo.link- **反向代理**: Nginx
+
 
 ---
 
@@ -569,7 +788,7 @@ docker exec shortlink-redis-1 redis-cli SAVE
 
 ## 👥 联系方式
 
-- 作者: 
+- 作者:
 - 邮箱: support@example.com
 - 项目主页: https://github.com/yourusername/shortimg-ai
 - 问题反馈: https://github.com/yourusername/shortimg-ai/issues
@@ -592,6 +811,6 @@ docker exec shortlink-redis-1 redis-cli SAVE
 
 **如果觉得有帮助，请给个 ⭐ Star！**
 
-Made with ❤️ by 
+Made with ❤️ by
 
 </div>

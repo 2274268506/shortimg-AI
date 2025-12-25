@@ -144,12 +144,12 @@ services:
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:
-      # 上传文件持久化
-      - /root/docker/shortimg-ai/backend/uploads:/app/uploads
+      # 上传文件持久化（建议挂载到独立数据盘）
+      - /data/shortimg-ai/uploads:/app/uploads
       # 日志持久化
-      - /root/docker/shortimg-ai/backend/logs:/app/logs
+      - /data/shortimg-ai/logs:/app/logs
       # 数据文件持久化 (如果使用 SQLite)
-      - /root/docker/shortimg-ai/backend/data:/app/data
+      - /data/shortimg-ai/data:/app/data
       # 配置文件 (可选)
       - /root/docker/shortimg-ai/backend/config:/app/config:ro
     networks:

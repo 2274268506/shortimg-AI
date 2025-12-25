@@ -16,7 +16,7 @@ services:
     container_name: shortlink-openresty-prod
     restart: always
     ports:
-      - "${REDIRECT_PORT:-8081}:80"     # HTTP 端口（内部使用，Nginx 反向代理）
+      - "${REDIRECT_PORT:-8081}:80" # HTTP 端口（内部使用，Nginx 反向代理）
       - "${REDIRECT_SSL_PORT:-8444}:443" # HTTPS 端口（可选）
     volumes:
       # 配置文件（只读）
@@ -26,19 +26,19 @@ services:
       # 路由规则配置文件（CDN 节点和路由策略）
       - /root/docker/shortimg-ai/redirect-service/routing_rules.yaml:/usr/local/openresty/nginx/lua/routing_rules.yaml:ro
       # https.conf 不需要 - 外部 Nginx 已处理 SSL/TLS
-      
+
       # Lua 脚本
       - /root/docker/shortimg-ai/redirect-service/lua:/usr/local/openresty/nginx/lua:ro
       - /root/docker/shortimg-ai/redirect-service/lib:/usr/local/openresty/site/lualib/resty:ro
       - ./lib/prometheus.lua:/usr/local/openresty/site/lualib/prometheus.lua:ro
       - ./lib/prometheus_keys.lua:/usr/local/openresty/site/lualib/prometheus_keys.lua:ro
       - ./lib/prometheus_resty_counter.lua:/usr/local/openresty/site/lualib/prometheus_resty_counter.lua:ro
-      
+
       # 静态文件和日志
       - /root/docker/shortimg-ai/redirect-service/html:/usr/local/openresty/nginx/html:ro
       - /root/docker/shortimg-ai/redirect-service/logs:/usr/local/openresty/nginx/logs
       - /root/docker/shortimg-ai/redirect-service/geoip:/usr/local/openresty/nginx/geoip:ro
-      
+
       # SSL 证书（如果需要）
       - /root/docker/shortimg-ai/redirect-service/ssl:/etc/nginx/ssl:ro
     environment:
@@ -47,24 +47,29 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - REDIS_DATABASE=${REDIS_DB:-1}
-      
+
+      # API 密钥配置（容器启动时自动注册到Redis）
+      - IMAGEBED_API_KEY=${API_KEY:-}
+      - API_KEY_ENABLED=true
+      - API_KEY=${API_KEY:-}
+
       # MySQL 连接配置
       - MYSQL_HOST=${MYSQL_HOST:-shortlink-mysql-prod}
       - MYSQL_PORT=${MYSQL_PORT:-3306}
       - MYSQL_USER=${MYSQL_USER:-short_link}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE:-short_links}
-      
+
       # 短链服务域名配置
       - REDIRECT_DOMAIN=${REDIRECT_DOMAIN:-short.oxvxo.link}
       - REDIRECT_PROTOCOL=${REDIRECT_PROTOCOL:-https}
-      
+
       # 后端图床服务配置
       - TC_GO_PRIMARY_DOMAIN=${TC_GO_PRIMARY_DOMAIN:-img.oxvxo.link}
       - TC_GO_PRIMARY_PROTOCOL=${TC_GO_PRIMARY_PROTOCOL:-https}
       - TC_GO_BACKUP_DOMAIN=${TC_GO_BACKUP_DOMAIN:-}
       - TC_GO_BACKUP_PROTOCOL=${TC_GO_BACKUP_PROTOCOL:-https}
-      
+
       # CDN 分流配置
       - CDN_ROUTING_MODE=${CDN_ROUTING_MODE:-direct}
       - CDN_PRIVATE_DOMAIN=${CDN_PRIVATE_DOMAIN:-localhost}
@@ -73,7 +78,7 @@ services:
       - CDN_PUBLIC_DOMAIN=${CDN_PUBLIC_DOMAIN:-dxy.oxvxo.net}
       - CDN_PUBLIC_PORT=${CDN_PUBLIC_PORT:-18443}
       - CDN_PUBLIC_PROTOCOL=${CDN_PUBLIC_PROTOCOL:-https}
-      
+
       # CDN 服务器配置
       - CDN_NORTH_TELECOM_DOMAIN=${CDN_NORTH_TELECOM_DOMAIN:-}
       - CDN_NORTH_TELECOM_PROTOCOL=${CDN_NORTH_TELECOM_PROTOCOL:-https}
@@ -83,30 +88,30 @@ services:
       - CDN_OVERSEAS_PROTOCOL=${CDN_OVERSEAS_PROTOCOL:-https}
       - CDN_FALLBACK_DOMAIN=${CDN_FALLBACK_DOMAIN:-img.oxvxo.link}
       - CDN_FALLBACK_PROTOCOL=${CDN_FALLBACK_PROTOCOL:-https}
-      
+
       # 缓存配置
       - CACHE_LOCAL_TTL=${CACHE_LOCAL_TTL:-300}
       - CACHE_REDIS_TTL=${CACHE_TTL:-3600}
-      
+
       # 性能和安全配置
       - RATE_LIMIT_MAX=${RATE_LIMIT:-100}
       - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
-      
+
       # GeoIP 配置
       - ENABLE_GEOIP=${ENABLE_GEOIP:-false}
       - GEOIP_CITY_DB=${GEOIP_CITY_DB:-/usr/local/openresty/nginx/geoip/GeoLite2-City.mmdb}
       - GEOIP_ASN_DB=${GEOIP_ASN_DB:-/usr/local/openresty/nginx/geoip/GeoLite2-ASN.mmdb}
-      
+
       # 日志和监控
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - ENABLE_METRICS=${ENABLE_METRICS:-true}
       - METRICS_PORT=${METRICS_PORT:-9145}
-      
+
       # 管理功能
       - ADMIN_AUTH_ENABLED=${ADMIN_AUTH_ENABLED:-true}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
-      
+
       # 时区
       - TZ=Asia/Shanghai
     depends_on:
@@ -117,7 +122,7 @@ services:
     networks:
       - shortlink-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -133,19 +138,11 @@ services:
     volumes:
       - /root/docker/shortimg-ai/redirect-service/redis:/data
     command: >
-      redis-server
-      --appendonly yes
-      --appendfsync everysec
-      --maxmemory 2gb
-      --maxmemory-policy allkeys-lru
-      --save 900 1
-      --save 300 10
-      --save 60 10000
-      --requirepass ${REDIS_PASSWORD:-}
+      redis-server --appendonly yes --appendfsync everysec --maxmemory 2gb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10 --save 60 10000 --requirepass ${REDIS_PASSWORD:-}
     networks:
       - shortlink-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -181,7 +178,7 @@ services:
     networks:
       - shortlink-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD" ]
       interval: 30s
       timeout: 10s
       retries: 5
